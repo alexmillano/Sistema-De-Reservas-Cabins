@@ -11,6 +11,7 @@ const notificacionRoutes = require('./routes/notificacion.routes');
 const reclamoRoutes = require('./routes/reclamo.routes');
 const calificacionRoutes = require('./routes/calificacion.routes');
 const opinionRoutes = require('./routes/opinion.routes');
+const finanzasRoutes = require('./routes/finanzas.routes');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/notificaciones', notificacionRoutes);
 app.use('/api/reclamos', reclamoRoutes);
 app.use('/api/calificaciones', calificacionRoutes);
 app.use('/api/opiniones', opinionRoutes);
+app.use('/api/finanzas', finanzasRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, (error) => {
