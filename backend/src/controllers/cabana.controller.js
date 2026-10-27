@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { CABANA_VISIBLE } = require('../utils/cabanas');
 
 // Orden permitido (lista blanca: nunca se arma el ORDER BY con texto del usuario)
 const ORDENES = {
@@ -65,7 +66,7 @@ const getCabanas = async (req, res) => {
     }
   }
 
-  const condiciones = ['c.activa = TRUE'];
+  const condiciones = [CABANA_VISIBLE];
   const params = [];
 
   if (provincia_id) {
@@ -112,7 +113,7 @@ const getCabanaById = async (req, res) => {
 
   try {
     const result = await db.query(
-      SELECT_CABANA + ' WHERE c.id = $1 AND c.activa = TRUE GROUP BY c.id, l.id, p.id',
+      SELECT_CABANA + ` WHERE c.id = $1 AND ${CABANA_VISIBLE} GROUP BY c.id, l.id, p.id`,
       [id]
     );
     if (result.rows.length === 0) {

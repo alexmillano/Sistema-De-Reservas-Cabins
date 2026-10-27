@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { esFechaValida, hoy, estaOcupada } = require('../utils/reservas');
+const { CABANA_VISIBLE } = require('../utils/cabanas');
 
 const ESTADOS = ['pendiente', 'confirmada', 'cancelada', 'completada'];
 
@@ -23,9 +24,7 @@ const modificarReserva = async (req, res) => {
   const body = req.body || {};
   const client = await db.connect();
   try {
-    await client.query('BEGIN');
-
-    const actual = await client.query(
+        const actual = await client.query(
       `SELECT cabana_id, estado, cantidad_personas,
               to_char(fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout
@@ -67,8 +66,9 @@ const modificarReserva = async (req, res) => {
     }
 
     // Se bloquea la cabaña para que dos cambios simultáneos no choquen
-    const cab = await client.query(
-      'SELECT capacidad_personas, activa FROM cabana WHERE id = $1 FOR UPDATE',
+        const cab = await client.query(
+      `SELECT c.capacidad_personas, ${CABANA_VISIBLE} AS activa
+       FROM cabana c WHERE c.id = $1 FOR UPDATE OF c`,
       [reserva.cabana_id]
     );
     if (!cab.rows[0].activa) {

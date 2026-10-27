@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { esFechaValida, hoy, estaOcupada } = require('../utils/reservas');
+const { CABANA_VISIBLE } = require('../utils/cabanas')
 
 // Valida un ítem del carrito. Devuelve { status, error } si algo está mal
 // o { valores } con los datos ya limpios.
@@ -24,7 +25,7 @@ const validarItem = async (usuarioId, body, excluirItemId = null) => {
   }
 
   const cab = await db.query(
-    'SELECT capacidad_personas FROM cabana WHERE id = $1 AND activa = TRUE',
+    `SELECT c.capacidad_personas FROM cabana c WHERE c.id = $1 AND ${CABANA_VISIBLE}`,
     [cabana_id]
   );
   if (cab.rows.length === 0) {
@@ -69,7 +70,7 @@ const getCarrito = async (req, res) => {
               to_char(ca.fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(ca.fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout,
               (ca.fecha_checkout - ca.fecha_checkin)   AS noches,
-              c.nombre, c.imagen_url, c.activa, c.capacidad_personas,
+              c.nombre, c.imagen_url, ${CABANA_VISIBLE} AS activa, c.capacidad_personas,
               c.precio_por_noche::float AS precio_por_noche,
               ((ca.fecha_checkout - ca.fecha_checkin) * c.precio_por_noche)::float AS subtotal,
               l.nombre AS localidad, p.nombre AS provincia

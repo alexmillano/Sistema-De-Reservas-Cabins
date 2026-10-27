@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { paginar } = require('../utils/paginacion');
+const { CABANA_VISIBLE } = require('../utils/cabanas');
 
 const responderError = (res, error) => {
   console.error(error);
@@ -22,7 +23,7 @@ const getOpinionesCabana = async (req, res) => {
 
   try {
     const cabana = await db.query(
-      'SELECT 1 FROM cabana WHERE id = $1 AND activa = TRUE',
+      `SELECT 1 FROM cabana c WHERE c.id = $1 AND ${CABANA_VISIBLE}`,
       [id]
     );
     if (cabana.rows.length === 0) {

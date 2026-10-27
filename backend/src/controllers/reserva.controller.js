@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { hoy, estaOcupada } = require('../utils/reservas');
+const { CABANA_VISIBLE } = require('../utils/cabanas');
 
 const errorHttp = (status, message) => Object.assign(new Error(message), { status });
 
@@ -52,7 +53,8 @@ const pagar = async (req, res) => {
       // FOR UPDATE bloquea la fila de la cabaña: dos pagos simultáneos
       // de la misma cabaña se ejecutan de a uno
       const cab = await client.query(
-        'SELECT nombre, capacidad_personas, activa FROM cabana WHERE id = $1 FOR UPDATE',
+        `SELECT c.nombre, c.capacidad_personas, ${CABANA_VISIBLE} AS activa
+         FROM cabana c WHERE c.id = $1 FOR UPDATE OF c`,
         [item.cabana_id]
       );
       const cabana = cab.rows[0];

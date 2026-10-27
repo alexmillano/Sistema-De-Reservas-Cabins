@@ -12,6 +12,9 @@ const reclamoRoutes = require('./routes/reclamo.routes');
 const calificacionRoutes = require('./routes/calificacion.routes');
 const opinionRoutes = require('./routes/opinion.routes');
 const finanzasRoutes = require('./routes/finanzas.routes');
+const adminRoutes = require('./routes/admin.routes');
+const perfilRoutes = require('./routes/perfil.routes');
+const usuarioRoutes = require('./routes/usuario.routes');
 
 const app = express();
 
@@ -32,6 +35,9 @@ app.use('/api/reclamos', reclamoRoutes);
 app.use('/api/calificaciones', calificacionRoutes);
 app.use('/api/opiniones', opinionRoutes);
 app.use('/api/finanzas', finanzasRoutes);
+app.use('/api/admins', adminRoutes);
+app.use('/api/perfil', perfilRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, (error) => {
