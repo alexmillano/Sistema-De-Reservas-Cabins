@@ -11,7 +11,7 @@ const ORDENES = {
 const SELECT_CABANA = `
   SELECT c.id, c.nombre, c.descripcion,
          c.precio_por_noche::float AS precio_por_noche,
-         c.cantidad_disponible, c.imagen_url, c.metodos_pago, c.activa,
+         c.capacidad_personas, c.imagen_url, c.metodos_pago, c.activa,
          c.created_at,
          l.id AS localidad_id, l.nombre AS localidad,
          p.id AS provincia_id, p.nombre AS provincia,
@@ -25,7 +25,7 @@ const SELECT_CABANA = `
 
 // Devuelve un mensaje de error, o null si los datos son válidos
 const validarDatos = async (datos) => {
-  const { nombre, descripcion, localidad_id, precio_por_noche, cantidad_disponible } = datos;
+  const { nombre, descripcion, localidad_id, precio_por_noche, capacidad_personas } = datos;
 
   if (!nombre || !descripcion || !localidad_id ||
       precio_por_noche === undefined || precio_por_noche === '') {
@@ -43,9 +43,9 @@ const validarDatos = async (datos) => {
     return 'El precio debe ser un número válido mayor a cero';
   }
 
-  const cantidad = cantidad_disponible === undefined ? 1 : Number(cantidad_disponible);
-  if (!Number.isInteger(cantidad) || cantidad < 1) {
-    return 'La cantidad disponible debe ser un número entero mayor o igual a 1';
+  const capacidad = Number(capacidad_personas);
+  if (!Number.isInteger(capacidad) || capacidad < 1 || capacidad > 50) {
+    return 'La capacidad (personas) debe ser un número entero entre 1 y 50';
   }
 
   const loc = await db.query('SELECT id FROM localidad WHERE id = $1', [localidad_id]);
@@ -133,12 +133,12 @@ const createCabana = async (req, res) => {
     }
 
     const { nombre, descripcion, localidad_id, precio_por_noche,
-            cantidad_disponible, imagen_url, metodos_pago } = req.body;
+            capacidad_personas, imagen_url, metodos_pago } = req.body;
 
     const result = await db.query(
       `INSERT INTO cabana
         (nombre, descripcion, localidad_id, precio_por_noche,
-         cantidad_disponible, imagen_url, metodos_pago, admin_id)
+         capacidad_personas, imagen_url, metodos_pago, admin_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
       [
@@ -146,7 +146,7 @@ const createCabana = async (req, res) => {
         descripcion,
         localidad_id,
         Number(precio_por_noche),
-        cantidad_disponible === undefined ? 1 : Number(cantidad_disponible),
+        Number(capacidad_personas),
         imagen_url || null,
         metodos_pago || null,
         req.user.id
@@ -178,12 +178,12 @@ const updateCabana = async (req, res) => {
     }
 
     const { nombre, descripcion, localidad_id, precio_por_noche,
-            cantidad_disponible, imagen_url, metodos_pago, activa } = req.body;
+            capacidad_personas, imagen_url, metodos_pago, activa } = req.body;
 
     await db.query(
       `UPDATE cabana SET
          nombre = $1, descripcion = $2, localidad_id = $3,
-         precio_por_noche = $4, cantidad_disponible = $5,
+         precio_por_noche = $4, capacidad_personas = $5,
          imagen_url = $6, metodos_pago = $7,
          activa = COALESCE($8, activa),
          updated_at = NOW()
@@ -193,7 +193,7 @@ const updateCabana = async (req, res) => {
         descripcion,
         localidad_id,
         Number(precio_por_noche),
-        cantidad_disponible === undefined ? 1 : Number(cantidad_disponible),
+        Number(capacidad_personas),
         imagen_url || null,
         metodos_pago || null,
         activa === undefined ? null : activa,

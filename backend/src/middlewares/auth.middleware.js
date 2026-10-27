@@ -25,4 +25,13 @@ const verifyAdmin = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken, verifyAdmin };
+const verifyUsuario = (req, res, next) => {
+  verifyToken(req, res, () => {
+    if (req.user.rol !== 'usuario') {
+      return res.status(403).json({ message: 'Esta acción es solo para usuarios' });
+    }
+    next();
+  });
+};
+
+module.exports = { verifyToken, verifyAdmin, verifyUsuario };
