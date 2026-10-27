@@ -8,6 +8,9 @@ const cabanaRoutes = require('./routes/cabana.routes');
 const carritoRoutes = require('./routes/carrito.routes');
 const reservaRoutes = require('./routes/reserva.routes');
 const notificacionRoutes = require('./routes/notificacion.routes');
+const reclamoRoutes = require('./routes/reclamo.routes');
+const calificacionRoutes = require('./routes/calificacion.routes');
+const opinionRoutes = require('./routes/opinion.routes');
 
 const app = express();
 
@@ -24,6 +27,9 @@ app.use('/api/cabanas', cabanaRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/reservas', reservaRoutes);
 app.use('/api/notificaciones', notificacionRoutes);
+app.use('/api/reclamos', reclamoRoutes);
+app.use('/api/calificaciones', calificacionRoutes);
+app.use('/api/opiniones', opinionRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, (error) => {
