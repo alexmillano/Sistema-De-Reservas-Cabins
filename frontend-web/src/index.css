@@ -245,3 +245,58 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .fila-precio input { width: 100%; min-width: 0; padding: 0.7rem 0.6rem; }
 .sidebar { min-width: 0; }
 .catalogo > section { min-width: 0; }
+
+/* ---------- Páginas con índice lateral, carrito y checkout ---------- */
+.con-lateral {
+  max-width: 1200px; margin: 0 auto; padding: 2rem 1.25rem;
+  display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; align-items: start;
+}
+.con-lateral > section { min-width: 0; }
+.indice { display: flex; flex-direction: column; gap: 0.25rem; }
+.indice a { padding: 0.5rem 0.6rem; border-radius: 6px; color: var(--texto); text-decoration: none; }
+.indice a:hover { background: var(--hueso); }
+.ancla { scroll-margin-top: 90px; }
+.con-lateral h2 small { font-weight: 400; font-size: 1rem; }
+
+.item-carrito {
+  display: grid; grid-template-columns: 190px 1fr; gap: 1rem;
+  padding: 0; overflow: hidden; margin-bottom: 1rem;
+}
+.item-carrito .cabana-img { min-height: 170px; }
+.item-cuerpo { padding: 1.1rem 1.25rem 1.1rem 0; }
+.item-cuerpo h3 { margin: 0; }
+.item-datos {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem 1rem; margin: 0.6rem 0; font-size: 0.95rem;
+}
+.item-acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.form-fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
+.linea-resumen {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--borde);
+}
+.linea-resumen.total { border-bottom: 0; font-size: 1.2rem; padding-top: 0.9rem; }
+.btn-fila { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+
+.checkout { max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 0; }
+.pasos { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.paso { display: flex; align-items: center; gap: 0.5rem; color: #8a7a6a; }
+.paso-circulo {
+  width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 2px solid var(--borde);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; background: #fff;
+}
+.paso.activo { color: var(--principal); font-weight: 600; }
+.paso.activo .paso-circulo { background: var(--principal); border-color: var(--principal); color: #fff; }
+.paso.hecho .paso-circulo { border-color: var(--principal); color: var(--principal); }
+.paso-linea { width: 2rem; height: 2px; background: var(--borde); }
+.aviso-simulado {
+  font-size: 0.85rem; background: #FFF3CD; color: #664d03;
+  padding: 0.6rem 0.9rem; border-radius: 8px; margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .con-lateral { grid-template-columns: 1fr; }
+  .item-carrito { grid-template-columns: 1fr; }
+  .item-carrito .cabana-img { height: 170px; min-height: 0; }
+  .item-cuerpo { padding: 0 1.25rem 1.1rem; }
+}

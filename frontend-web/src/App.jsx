@@ -7,12 +7,13 @@ import Login from './pages/Login';
 import Registro from './pages/Registro';
 import Reservas from './pages/Reservas';
 import DetalleCabana from './pages/DetalleCabana';
+import Carrito from './pages/Carrito';
+import Checkout from './pages/Checkout';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 // Pantallas que se construyen más adelante; se van reemplazando una por una
 const RUTAS_USUARIO = [
   ['mis-reservas', 'Mis Reservas'],
-  ['carrito', 'Carrito'],
   ['reclamos', 'Reclamos']
 ];
 
@@ -49,6 +50,8 @@ export default function App() {
             <Route element={<ProtectedRoute roles={['usuario']} />}>
               <Route path="reservas" element={<Reservas />} />
               <Route path="cabanas/:id" element={<DetalleCabana />} />
+              <Route path="carrito" element={<Carrito />} />
+              <Route path="checkout" element={<Checkout />} />
               {rutasPendientes(RUTAS_USUARIO)}
             </Route>
 
