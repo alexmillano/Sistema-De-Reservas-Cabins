@@ -161,3 +161,87 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .modal { background: #fff; color: var(--texto); border-radius: 12px; padding: 1.5rem; width: min(92vw, 380px); }
 .modal h3 { margin-top: 0; }
 .modal-botones { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+/* ---------- Catálogo ---------- */
+.campo select {
+  padding: 0.7rem; border: 1px solid var(--borde); border-radius: 8px;
+  font: inherit; background: #fff;
+}
+.campo select:focus { outline: 2px solid var(--principal); border-color: transparent; }
+
+.catalogo {
+  max-width: 1200px; margin: 0 auto; padding: 2rem 1.25rem;
+  display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;
+}
+.sidebar { position: sticky; top: 84px; }
+.sidebar h3 { margin-top: 0; }
+.fila-precio { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.catalogo-barra {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.catalogo-barra h2 { margin: 0; }
+.catalogo-barra h2 small { font-weight: 400; font-size: 1rem; }
+.campo-orden { margin-bottom: 0; min-width: 190px; }
+.lista-cabanas { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.cabana-card {
+  display: grid; grid-template-columns: 300px 1fr; background: #fff;
+  border-radius: 12px; box-shadow: var(--sombra); overflow: hidden;
+}
+.cabana-img { width: 100%; height: 100%; min-height: 210px; object-fit: cover; display: block; }
+.cabana-sin-imagen {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #cfd8c3, #a9b89a); color: #44503a; font-weight: 600;
+}
+.cabana-info { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.cabana-info h3 { margin: 0; }
+.cabana-ubicacion { margin: 0; color: #6b5a4a; font-size: 0.9rem; }
+.cabana-descripcion {
+  margin: 0.25rem 0; display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.cabana-datos { margin: 0; font-size: 0.9rem; color: #6b5a4a; }
+.cabana-pie {
+  margin-top: auto; padding-top: 0.75rem; display: flex;
+  justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+}
+.estrellas { color: #C58B00; }
+.precio { font-size: 1.3rem; font-weight: 700; color: var(--principal); }
+.precio small { font-weight: 400; font-size: 0.85rem; color: var(--texto); }
+
+@media (max-width: 900px) {
+  .catalogo { grid-template-columns: 1fr; }
+  .sidebar { position: static; }
+  .cabana-card { grid-template-columns: 1fr; }
+  .cabana-img { height: 200px; min-height: 0; }
+}
+
+/* ---------- Detalle de cabaña ---------- */
+.detalle { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 0; }
+.volver { display: inline-block; margin-bottom: 1rem; color: var(--principal); text-decoration: none; font-weight: 600; }
+.detalle-grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: start; }
+.detalle-img { width: 100%; height: 360px; object-fit: cover; border-radius: 12px; display: block; margin-bottom: 1rem; }
+.detalle-img.cabana-sin-imagen { display: flex; }
+.descripcion-completa { white-space: pre-line; }
+.chips-izq { justify-content: flex-start; margin-top: 0; }
+.lista-opiniones { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+.opinion p { margin: 0.4rem 0; }
+.opinion-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.panel-reserva { position: sticky; top: 84px; }
+.resumen-reserva {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 0; border-top: 1px solid var(--borde); margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .detalle-grid { grid-template-columns: 1fr; }
+  .panel-reserva { position: static; }
+  .detalle-img { height: 240px; }
+}
+
+/* ---------- Ajustes: filtro de precio ---------- */
+.fila-precio { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.fila-precio input { width: 100%; min-width: 0; padding: 0.7rem 0.6rem; }
+.sidebar { min-width: 0; }
+.catalogo > section { min-width: 0; }
