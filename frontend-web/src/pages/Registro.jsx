@@ -76,9 +76,9 @@ export default function Registro() {
           />
         </div>
         <div className="campo">
-          <label htmlFor="password">Contraseña (mínimo 6 caracteres)</label>
+          <label htmlFor="password">Contraseña (mínimo 8 caracteres)</label>
           <input
-            id="password" name="password" type="password" minLength={6}
+            id="password" name="password" type="password" minLength={8}
             value={form.password} onChange={cambiar} required
           />
         </div>

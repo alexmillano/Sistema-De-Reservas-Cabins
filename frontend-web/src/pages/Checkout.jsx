@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { formatearPrecio } from '../utils/formato';
 import { formatearFechaCorta, hoyArgentina } from '../utils/fechas';
@@ -18,6 +18,9 @@ const formatearVencimiento = (texto) => {
   const d = soloDigitos(texto).slice(0, 4);
   return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
 };
+
+// 125 -> 02:05
+const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 // Mismas reglas que el servidor; devuelve un mensaje o null
 const validarPago = (f) => {
@@ -59,24 +62,77 @@ function Pasos({ actual }) {
 }
 
 export default function Checkout() {
+  const navigate = useNavigate();
   const [carrito, setCarrito] = useState({ cargando: true, items: [], total: 0, error: '' });
   const [paso, setPaso] = useState('resumen');
   const [pago, setPago] = useState(PAGO_VACIO);
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [confirmacion, setConfirmacion] = useState(null);
+  // estado: iniciando | activo | inactivo | error | finalizado
+  const [bloqueo, setBloqueo] = useState({ estado: 'iniciando', expira: null, mensaje: '' });
+  const [ahora, setAhora] = useState(Date.now());
 
+  // Pide al servidor que bloquee las cabañas del carrito durante unos minutos
+  const bloquear = useCallback(async () => {
+    try {
+      const { data } = await api.post('/reservas/checkout');
+      setAhora(Date.now());
+      setBloqueo({ estado: 'activo', expira: Date.now() + data.segundos_restantes * 1000, mensaje: '' });
+    } catch (err) {
+      setBloqueo({ estado: 'error', expira: null, mensaje: mensajeError(err) });
+    }
+  }, []);
+
+  // Al entrar: se carga el carrito y, si se puede pagar, se bloquean las cabañas
   useEffect(() => {
     let activo = true;
-    api.get('/carrito')
-      .then(({ data }) => {
-        if (activo) setCarrito({ cargando: false, items: data.items, total: data.total, error: '' });
-      })
-      .catch((err) => {
+    (async () => {
+      try {
+        const { data } = await api.get('/carrito');
+        if (!activo) return;
+        setCarrito({ cargando: false, items: data.items, total: data.total, error: '' });
+
+        const hoy = hoyArgentina();
+        const problemas = data.items.some((i) => !i.activa || i.fecha_checkin < hoy);
+        if (data.items.length === 0 || problemas) {
+          setBloqueo({ estado: 'inactivo', expira: null, mensaje: '' });
+          return;
+        }
+        await bloquear();
+      } catch (err) {
         if (activo) setCarrito({ cargando: false, items: [], total: 0, error: mensajeError(err) });
-      });
+      }
+    })();
     return () => { activo = false; };
-  }, []);
+  }, [bloquear]);
+
+  // Reloj de la cuenta regresiva
+  useEffect(() => {
+    if (bloqueo.estado !== 'activo') return undefined;
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [bloqueo.estado]);
+
+  const segundos = bloqueo.estado === 'activo'
+    ? Math.max(0, Math.ceil((bloqueo.expira - ahora) / 1000))
+    : 0;
+  const vencido = bloqueo.estado === 'activo' && segundos === 0;
+
+  const reintentar = async () => {
+    setBloqueo({ estado: 'iniciando', expira: null, mensaje: '' });
+    await bloquear();
+  };
+
+  // Al salir hacia el carrito se liberan las cabañas para que otra persona las pueda tomar
+  const volverAlCarrito = async () => {
+    try {
+      await api.delete('/reservas/checkout');
+    } catch {
+      // Si falla, el bloqueo vence solo
+    }
+    navigate('/carrito');
+  };
 
   const cambiar = (e) => {
     const { name, value } = e.target;
@@ -107,6 +163,7 @@ export default function Checkout() {
         titular: pago.titular.trim()
       });
       setConfirmacion(data);
+      setBloqueo({ estado: 'finalizado', expira: null, mensaje: '' });
       setPago(PAGO_VACIO); // los datos de la tarjeta no se guardan en ningún lado
     } catch (err) {
       setError(mensajeError(err));
@@ -178,10 +235,38 @@ export default function Checkout() {
 
   const hoy = hoyArgentina();
   const hayProblemas = carrito.items.some((i) => !i.activa || i.fecha_checkin < hoy);
+  const puedeAvanzar = !hayProblemas && bloqueo.estado === 'activo' && !vencido;
+
+  // Cartel del bloqueo: cuenta regresiva, vencimiento o error
+  let avisoBloqueo = null;
+  if (bloqueo.estado === 'iniciando') {
+    avisoBloqueo = <div className="aviso-bloqueo">Bloqueando tus fechas...</div>;
+  } else if (vencido) {
+    avisoBloqueo = (
+      <div className="mensaje-error">
+        Se agotó el tiempo de bloqueo. Para seguir, volvé a bloquear tus fechas.{' '}
+        <button type="button" className="btn-link" onClick={reintentar}>Volver a bloquear mis fechas</button>
+      </div>
+    );
+  } else if (bloqueo.estado === 'activo') {
+    avisoBloqueo = (
+      <div className={`aviso-bloqueo ${segundos <= 120 ? 'urgente' : ''}`}>
+        ⏱ Tus fechas están reservadas para vos durante <strong>{mmss(segundos)}</strong>
+      </div>
+    );
+  } else if (bloqueo.estado === 'error') {
+    avisoBloqueo = (
+      <div className="mensaje-error">
+        {bloqueo.mensaje}{' '}
+        <button type="button" className="btn-link" onClick={reintentar}>Reintentar</button>
+      </div>
+    );
+  }
 
   return (
     <div className="checkout">
       <Pasos actual={paso === 'pago' ? 2 : 1} />
+      {avisoBloqueo}
 
       {/* ---------- Paso 1: resumen ---------- */}
       {paso === 'resumen' && (
@@ -215,9 +300,11 @@ export default function Checkout() {
           )}
 
           <div className="btn-fila">
-            <Link to="/carrito" className="btn btn-secundario">Volver al carrito</Link>
+            <button type="button" className="btn btn-secundario" onClick={volverAlCarrito}>
+              Volver al carrito
+            </button>
             <button
-              type="button" className="btn" disabled={hayProblemas}
+              type="button" className="btn" disabled={!puedeAvanzar}
               onClick={() => { setError(''); setPaso('pago'); }}
             >
               Continuar al pago
@@ -271,7 +358,8 @@ export default function Checkout() {
 
           {error && (
             <div className="mensaje-error">
-              {error} <Link to="/carrito">Volver al carrito</Link>
+              {error}{' '}
+              <button type="button" className="btn-link" onClick={volverAlCarrito}>Volver al carrito</button>
             </div>
           )}
 
@@ -279,7 +367,7 @@ export default function Checkout() {
             <button type="button" className="btn btn-secundario" onClick={() => setPaso('resumen')}>
               Volver al resumen
             </button>
-            <button type="submit" className="btn" disabled={enviando}>
+            <button type="submit" className="btn" disabled={enviando || !puedeAvanzar}>
               {enviando ? 'Procesando...' : `Confirmar pago ${formatearPrecio(carrito.total)}`}
             </button>
           </div>

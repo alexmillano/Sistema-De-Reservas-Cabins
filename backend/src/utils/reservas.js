@@ -1,3 +1,6 @@
+// Minutos que una cabaña queda bloqueada mientras la persona paga
+const MINUTOS_BLOQUEO = 15;
+
 // Valida formato AAAA-MM-DD y que la fecha exista (rechaza 2026-02-31)
 const esFechaValida = (valor) => {
   if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
@@ -27,4 +30,20 @@ const estaOcupada = async (executor, cabanaId, checkin, checkout, excluirReserva
   return result.rows.length > 0;
 };
 
-module.exports = { esFechaValida, hoy, estaOcupada };
+// true si OTRA persona está pagando esa cabaña en fechas que se superponen
+// (los bloqueos propios no cuentan y los vencidos se ignoran).
+const bloqueadaPorOtro = async (executor, cabanaId, checkin, checkout, usuarioId) => {
+  const result = await executor.query(
+    `SELECT 1 FROM bloqueo
+     WHERE cabana_id = $1
+       AND usuario_id <> $4
+       AND expira_at > NOW()
+       AND fecha_checkin < $3
+       AND fecha_checkout > $2
+     LIMIT 1`,
+    [cabanaId, checkin, checkout, usuarioId]
+  );
+  return result.rows.length > 0;
+};
+
+module.exports = { esFechaValida, hoy, estaOcupada, bloqueadaPorOtro, MINUTOS_BLOQUEO };

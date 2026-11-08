@@ -1,4 +1,38 @@
 const db = require('../config/db');
+const { hoy } = require('../utils/reservas');
+
+const INTERVALO_MS = 60 * 1000;
+let ultimaGeneracion = 0;
+
+// Crea un aviso de check-out por cada reserva confirmada cuya fecha de salida ya llegó.
+// El aviso le llega solo al dueño de la cabaña. Se genera una sola vez por reserva
+// (lo garantiza el índice único de la base) y, como mucho, una vez por minuto.
+const generarAvisosCheckout = async () => {
+  const ahora = Date.now();
+  if (ahora - ultimaGeneracion < INTERVALO_MS) return;
+  ultimaGeneracion = ahora;
+
+  try {
+    await db.query(
+      `INSERT INTO notificacion (admin_id, tipo, mensaje, reserva_id)
+       SELECT c.admin_id, 'checkout',
+              'Llegó el check-out de ' || u.nombre || ' ' || u.apellido || ' en ' || c.nombre ||
+              ' (' || to_char(r.fecha_checkout, 'DD/MM/YYYY') || '). Marcá la reserva como completada.',
+              r.id
+       FROM reserva r
+       JOIN usuario u ON u.id = r.usuario_id
+       JOIN cabana c ON c.id = r.cabana_id
+       WHERE r.estado = 'confirmada' AND r.fecha_checkout <= $1::date
+         AND c.admin_id IS NOT NULL
+       ON CONFLICT DO NOTHING`,
+      [hoy()]
+    );
+  } catch (error) {
+    // Si falla, el listado sigue funcionando: solo se omite la generación de avisos
+    console.error('No se pudieron generar los avisos de check-out:', error.message);
+    ultimaGeneracion = 0;
+  }
+};
 
 // Cada admin ve solo sus propias notificaciones
 const getNotificaciones = async (req, res) => {
@@ -8,6 +42,8 @@ const getNotificaciones = async (req, res) => {
   if (leida !== undefined && !['true', 'false'].includes(leida)) {
     return res.status(400).json({ message: 'El filtro leida debe ser true o false' });
   }
+
+  await generarAvisosCheckout();
 
   const params = [req.user.id];
   let filtro = '';
@@ -19,10 +55,10 @@ const getNotificaciones = async (req, res) => {
 
   try {
     const lista = await db.query(
-      `SELECT id, tipo, mensaje, leida, created_at
+      `SELECT id, tipo, mensaje, reserva_id, leida, created_at
        FROM notificacion
        WHERE admin_id = $1 ${filtro}
-       ORDER BY created_at DESC
+       ORDER BY created_at DESC, id DESC
        LIMIT $${params.length}`,
       params
     );

@@ -56,6 +56,7 @@ const validarDatos = async (datos) => {
   return null;
 };
 
+// ---------- PÚBLICO: catálogo ----------
 const getCabanas = async (req, res) => {
   const { provincia_id, localidad_id, precio_min, precio_max, valoracion_min, orden } = req.query;
 
@@ -105,6 +106,38 @@ const getCabanas = async (req, res) => {
   }
 };
 
+// ---------- ADMINISTRADOR: panel de cabañas ----------
+// El dueño ve sus cabañas (activas e inactivas). El superadmin ve todas, con el nombre del dueño.
+const getCabanasPanel = async (req, res) => {
+  const dueno = req.user.es_superadmin ? null : req.user.id;
+
+  try {
+    const result = await db.query(
+      `SELECT c.id, c.nombre, c.descripcion,
+              c.precio_por_noche::float AS precio_por_noche,
+              c.capacidad_personas, c.imagen_url, c.metodos_pago, c.activa, c.created_at,
+              l.id AS localidad_id, l.nombre AS localidad,
+              p.id AS provincia_id, p.nombre AS provincia,
+              c.admin_id, a.nombre AS dueno_nombre, a.apellido AS dueno_apellido,
+              ROUND(COALESCE(AVG(cal.puntaje), 0), 1)::float AS valoracion,
+              COUNT(cal.id)::int AS total_calificaciones
+       FROM cabana c
+       JOIN localidad l ON c.localidad_id = l.id
+       JOIN provincia p ON l.provincia_id = p.id
+       LEFT JOIN admin a ON a.id = c.admin_id
+       LEFT JOIN calificacion cal ON cal.cabana_id = c.id
+       WHERE ($1::int IS NULL OR c.admin_id = $1)
+       GROUP BY c.id, l.id, p.id, a.id
+       ORDER BY c.created_at DESC, c.id DESC`,
+      [dueno]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
 const getCabanaById = async (req, res) => {
   const { id } = req.params;
   if (!Number.isInteger(Number(id))) {
@@ -126,6 +159,7 @@ const getCabanaById = async (req, res) => {
   }
 };
 
+// ---------- DUEÑO: crear una cabaña (queda a su nombre) ----------
 const createCabana = async (req, res) => {
   try {
     const error = await validarDatos(req.body);
@@ -161,6 +195,20 @@ const createCabana = async (req, res) => {
   }
 };
 
+// Busca la cabaña y comprueba que sea del dueño que hace el pedido.
+// Devuelve { status, message } si no puede seguir, o null si todo está bien.
+const comprobarDueno = async (id, usuarioId) => {
+  const result = await db.query('SELECT admin_id FROM cabana WHERE id = $1', [id]);
+  if (result.rows.length === 0) {
+    return { status: 404, message: 'Cabaña no encontrada' };
+  }
+  if (result.rows[0].admin_id !== usuarioId) {
+    return { status: 403, message: 'Solo podés gestionar tus propias cabañas' };
+  }
+  return null;
+};
+
+// ---------- DUEÑO: editar una cabaña propia ----------
 const updateCabana = async (req, res) => {
   const { id } = req.params;
   if (!Number.isInteger(Number(id))) {
@@ -168,9 +216,9 @@ const updateCabana = async (req, res) => {
   }
 
   try {
-    const existe = await db.query('SELECT id FROM cabana WHERE id = $1', [id]);
-    if (existe.rows.length === 0) {
-      return res.status(404).json({ message: 'Cabaña no encontrada' });
+    const problema = await comprobarDueno(id, req.user.id);
+    if (problema) {
+      return res.status(problema.status).json({ message: problema.message });
     }
 
     const error = await validarDatos(req.body);
@@ -209,6 +257,7 @@ const updateCabana = async (req, res) => {
   }
 };
 
+// ---------- DUEÑO: desactivar una cabaña propia ----------
 const deleteCabana = async (req, res) => {
   const { id } = req.params;
   if (!Number.isInteger(Number(id))) {
@@ -216,13 +265,15 @@ const deleteCabana = async (req, res) => {
   }
 
   try {
-    const result = await db.query(
-      'UPDATE cabana SET activa = FALSE, updated_at = NOW() WHERE id = $1 RETURNING id',
+    const problema = await comprobarDueno(id, req.user.id);
+    if (problema) {
+      return res.status(problema.status).json({ message: problema.message });
+    }
+
+    await db.query(
+      'UPDATE cabana SET activa = FALSE, updated_at = NOW() WHERE id = $1',
       [id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Cabaña no encontrada' });
-    }
     res.json({ message: 'Cabaña eliminada del catálogo' });
   } catch (error) {
     console.error(error);
@@ -230,4 +281,4 @@ const deleteCabana = async (req, res) => {
   }
 };
 
-module.exports = { getCabanas, getCabanaById, createCabana, updateCabana, deleteCabana };
+module.exports = { getCabanas, getCabanasPanel, getCabanaById, createCabana, updateCabana, deleteCabana };

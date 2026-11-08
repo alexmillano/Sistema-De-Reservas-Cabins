@@ -3,43 +3,51 @@ const { hoy } = require('../utils/reservas');
 
 const redondear = (n) => Math.round(n * 100) / 100;
 
+// Cada dueño ve las finanzas de sus propias cabañas; el superadmin ve el total.
 const getResumen = async (req, res) => {
   const anioTexto = req.query.anio === undefined ? hoy().slice(0, 4) : String(req.query.anio);
   if (!/^\d{4}$/.test(anioTexto) || Number(anioTexto) < 2000 || Number(anioTexto) > 2100) {
     return res.status(400).json({ message: 'El año debe tener 4 dígitos (entre 2000 y 2100)' });
   }
   const anio = Number(anioTexto);
+  const dueno = req.user.es_superadmin ? null : req.user.id;
 
   try {
     const [estados, meses, cabanas] = await Promise.all([
       // Totales por estado e ingresos del año
       db.query(
         `SELECT
-           COALESCE(SUM(precio_total) FILTER (WHERE estado IN ('confirmada', 'completada')), 0)::float AS ingresos_totales,
-           COUNT(*) FILTER (WHERE estado = 'pendiente')::int  AS pendientes,
-           COUNT(*) FILTER (WHERE estado = 'confirmada')::int AS confirmadas,
-           COUNT(*) FILTER (WHERE estado = 'completada')::int AS completadas,
-           COUNT(*) FILTER (WHERE estado = 'cancelada')::int  AS canceladas
-         FROM reserva
-         WHERE fecha_checkin >= make_date($1::int, 1, 1)
-           AND fecha_checkin <  make_date($1::int + 1, 1, 1)`,
-        [anio]
+           COALESCE(SUM(r.precio_total) FILTER (WHERE r.estado IN ('confirmada', 'completada')), 0)::float AS ingresos_totales,
+           COUNT(*) FILTER (WHERE r.estado = 'pendiente')::int  AS pendientes,
+           COUNT(*) FILTER (WHERE r.estado = 'confirmada')::int AS confirmadas,
+           COUNT(*) FILTER (WHERE r.estado = 'completada')::int AS completadas,
+           COUNT(*) FILTER (WHERE r.estado = 'cancelada')::int  AS canceladas
+         FROM reserva r
+         JOIN cabana c ON c.id = r.cabana_id
+         WHERE r.fecha_checkin >= make_date($1::int, 1, 1)
+           AND r.fecha_checkin <  make_date($1::int + 1, 1, 1)
+           AND ($2::int IS NULL OR c.admin_id = $2)`,
+        [anio, dueno]
       ),
 
       // Ingresos de los 12 meses (los meses sin reservas salen en cero)
       db.query(
         `SELECT m AS mes,
-                COALESCE(SUM(r.precio_total), 0)::float AS ingresos,
-                COUNT(r.id)::int AS reservas
+                COALESCE(SUM(x.precio_total), 0)::float AS ingresos,
+                COUNT(x.id)::int AS reservas
          FROM generate_series(1, 12) AS m
-         LEFT JOIN reserva r
-           ON EXTRACT(MONTH FROM r.fecha_checkin) = m
-          AND r.fecha_checkin >= make_date($1::int, 1, 1)
-          AND r.fecha_checkin <  make_date($1::int + 1, 1, 1)
-          AND r.estado IN ('confirmada', 'completada')
+         LEFT JOIN (
+           SELECT r.id, r.precio_total, r.fecha_checkin
+           FROM reserva r
+           JOIN cabana c ON c.id = r.cabana_id
+           WHERE r.estado IN ('confirmada', 'completada')
+             AND r.fecha_checkin >= make_date($1::int, 1, 1)
+             AND r.fecha_checkin <  make_date($1::int + 1, 1, 1)
+             AND ($2::int IS NULL OR c.admin_id = $2)
+         ) x ON EXTRACT(MONTH FROM x.fecha_checkin) = m
          GROUP BY m
          ORDER BY m`,
-        [anio]
+        [anio, dueno]
       ),
 
       // Ocupación por cabaña: reservas, noches ocupadas e ingresos del año
@@ -61,10 +69,11 @@ const getResumen = async (req, res) => {
           AND r.estado IN ('confirmada', 'completada')
           AND r.fecha_checkin >= make_date($1::int, 1, 1)
           AND r.fecha_checkin <  make_date($1::int + 1, 1, 1)
+         WHERE ($2::int IS NULL OR c.admin_id = $2)
          GROUP BY c.id, l.id, p.id
          HAVING c.activa = TRUE OR COUNT(r.id) > 0
          ORDER BY reservas DESC, c.nombre`,
-        [anio]
+        [anio, dueno]
       )
     ]);
 
@@ -79,6 +88,7 @@ const getResumen = async (req, res) => {
 
     res.json({
       anio,
+      alcance: dueno === null ? 'todas' : 'propias',
       indicadores: {
         ingresos_totales: ingresosTotales,
         reservas_con_ingreso: reservasConIngreso,

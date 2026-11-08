@@ -50,10 +50,21 @@ const verifyToken = async (req, res, next) => {
   next();
 };
 
+// Cualquier administrador: dueño de cabañas o superadmin
 const verifyAdmin = (req, res, next) => {
   verifyToken(req, res, () => {
     if (req.user.rol !== 'admin') {
       return res.status(403).json({ message: 'Se requiere rol de administrador' });
+    }
+    next();
+  });
+};
+
+// Solo el dueño de cabañas. El superadmin consulta pero no gestiona.
+const verifyDueno = (req, res, next) => {
+  verifyAdmin(req, res, () => {
+    if (req.user.es_superadmin) {
+      return res.status(403).json({ message: 'El superadmin solo consulta: esta acción es para los dueños de las cabañas' });
     }
     next();
   });
@@ -77,4 +88,4 @@ const verifyUsuario = (req, res, next) => {
   });
 };
 
-module.exports = { verifyToken, verifyAdmin, verifySuperadmin, verifyUsuario };
+module.exports = { verifyToken, verifyAdmin, verifyDueno, verifySuperadmin, verifyUsuario };

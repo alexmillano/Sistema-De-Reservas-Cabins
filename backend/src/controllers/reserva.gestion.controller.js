@@ -24,7 +24,9 @@ const modificarReserva = async (req, res) => {
   const body = req.body || {};
   const client = await db.connect();
   try {
-        const actual = await client.query(
+    await client.query('BEGIN');
+
+    const actual = await client.query(
       `SELECT cabana_id, estado, cantidad_personas,
               to_char(fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout
@@ -66,7 +68,7 @@ const modificarReserva = async (req, res) => {
     }
 
     // Se bloquea la cabaña para que dos cambios simultáneos no choquen
-        const cab = await client.query(
+    const cab = await client.query(
       `SELECT c.capacidad_personas, ${CABANA_VISIBLE} AS activa
        FROM cabana c WHERE c.id = $1 FOR UPDATE OF c`,
       [reserva.cabana_id]
@@ -126,7 +128,7 @@ const cancelarReserva = async (req, res) => {
     await client.query('BEGIN');
 
     const actual = await client.query(
-      `SELECT r.estado, c.nombre AS cabana_nombre,
+      `SELECT r.estado, c.nombre AS cabana_nombre, c.admin_id,
               to_char(r.fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(r.fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout
        FROM reserva r
@@ -149,12 +151,18 @@ const cancelarReserva = async (req, res) => {
       [id]
     );
 
-    // Aviso para todos los admins
-    await client.query(
-      `INSERT INTO notificacion (admin_id, tipo, mensaje)
-       SELECT id, 'cancelacion', $1::text FROM admin`,
-      [`${req.user.usuario} canceló la reserva de ${reserva.cabana_nombre} (${reserva.fecha_checkin} al ${reserva.fecha_checkout})`]
-    );
+    // El aviso le llega solo al dueño de la cabaña
+    if (reserva.admin_id) {
+      await client.query(
+        `INSERT INTO notificacion (admin_id, tipo, mensaje, reserva_id)
+         VALUES ($1, 'cancelacion', $2, $3)`,
+        [
+          reserva.admin_id,
+          `${req.user.usuario} canceló la reserva de ${reserva.cabana_nombre} (${reserva.fecha_checkin} al ${reserva.fecha_checkout})`,
+          id
+        ]
+      );
+    }
 
     await client.query('COMMIT');
     res.json({ message: 'Reserva cancelada exitosamente' });
@@ -171,6 +179,7 @@ const cancelarReserva = async (req, res) => {
 };
 
 // ---------- ADMIN: listar reservas (con filtro por estado y paginación) ----------
+// Cada dueño ve solo las reservas de sus cabañas; el superadmin las ve todas.
 const getReservasAdmin = async (req, res) => {
   const { estado } = req.query;
   const pagina = Math.max(parseInt(req.query.pagina, 10) || 1, 1);
@@ -180,16 +189,18 @@ const getReservasAdmin = async (req, res) => {
     return res.status(400).json({ message: `Estado inválido. Opciones: ${ESTADOS.join(', ')}` });
   }
 
-  const params = [];
-  let where = '';
+  const params = [req.user.es_superadmin ? null : req.user.id];
+  const condiciones = ['($1::int IS NULL OR c.admin_id = $1)'];
   if (estado) {
     params.push(estado);
-    where = `WHERE r.estado = $${params.length}`;
+    condiciones.push(`r.estado = $${params.length}`);
   }
+  const where = `WHERE ${condiciones.join(' AND ')}`;
 
   try {
     const total = await db.query(
-      `SELECT COUNT(*)::int AS total FROM reserva r ${where}`,
+      `SELECT COUNT(*)::int AS total
+       FROM reserva r JOIN cabana c ON r.cabana_id = c.id ${where}`,
       params
     );
 
@@ -202,14 +213,16 @@ const getReservasAdmin = async (req, res) => {
               u.id AS usuario_id, u.nombre AS usuario_nombre,
               u.apellido AS usuario_apellido, u.email AS usuario_email,
               c.id AS cabana_id, c.nombre AS cabana_nombre,
+              c.admin_id, a.nombre AS dueno_nombre, a.apellido AS dueno_apellido,
               l.nombre AS localidad, p.nombre AS provincia
        FROM reserva r
        JOIN usuario u ON r.usuario_id = u.id
        JOIN cabana c ON r.cabana_id = c.id
+       LEFT JOIN admin a ON a.id = c.admin_id
        JOIN localidad l ON c.localidad_id = l.id
        JOIN provincia p ON l.provincia_id = p.id
        ${where}
-       ORDER BY r.created_at DESC
+       ORDER BY r.created_at DESC, r.id DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
@@ -221,7 +234,7 @@ const getReservasAdmin = async (req, res) => {
   }
 };
 
-// ---------- ADMIN: cambiar el estado de una reserva ----------
+// ---------- DUEÑO: cambiar el estado de una reserva de sus cabañas ----------
 const cambiarEstado = async (req, res) => {
   const { id } = req.params;
   if (!Number.isInteger(Number(id))) {
@@ -234,8 +247,14 @@ const cambiarEstado = async (req, res) => {
   }
 
   try {
-    const actual = await db.query('SELECT estado FROM reserva WHERE id = $1', [id]);
-    if (actual.rows.length === 0) {
+    const actual = await db.query(
+      `SELECT r.estado, c.admin_id
+       FROM reserva r JOIN cabana c ON c.id = r.cabana_id
+       WHERE r.id = $1`,
+      [id]
+    );
+    // Una reserva de otro dueño se trata como si no existiera
+    if (actual.rows.length === 0 || actual.rows[0].admin_id !== req.user.id) {
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
 
@@ -246,7 +265,7 @@ const cambiarEstado = async (req, res) => {
       });
     }
 
-    // La condición "AND estado = actual" evita pisar un cambio hecho por otro admin al mismo tiempo
+    // La condición "AND estado = actual" evita pisar un cambio hecho al mismo tiempo
     const result = await db.query(
       `UPDATE reserva SET estado = $1, updated_at = NOW()
        WHERE id = $2 AND estado = $3

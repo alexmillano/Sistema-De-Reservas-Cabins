@@ -57,8 +57,8 @@ const validarCuenta = (body, completo) => {
 
 // bcrypt solo procesa los primeros 72 bytes, por eso se limita el largo
 const validarPassword = (password) => {
-  if (typeof password !== 'string' || password.length < 6) {
-    return 'La contraseña debe tener al menos 6 caracteres';
+  if (typeof password !== 'string' || password.length < 8) {
+    return 'La contraseña debe tener al menos 8 caracteres';
   }
   if (Buffer.byteLength(password, 'utf8') > 72) {
     return 'La contraseña es demasiado larga (máximo 72 caracteres)';

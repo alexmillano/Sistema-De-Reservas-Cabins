@@ -49,7 +49,7 @@ const crearCalificacion = async (req, res) => {
 
     // Tiene que haber completado una estadía en esa cabaña
     const estadia = await client.query(
-      `SELECT c.nombre
+      `SELECT c.nombre, c.admin_id
        FROM reserva r
        JOIN cabana c ON c.id = r.cabana_id
        WHERE r.usuario_id = $1 AND r.cabana_id = $2 AND r.estado = 'completada'
@@ -80,12 +80,17 @@ const crearCalificacion = async (req, res) => {
       );
     }
 
-    // Aviso para los admins
-    await client.query(
-      `INSERT INTO notificacion (admin_id, tipo, mensaje)
-       SELECT id, 'opinion', $1::text FROM admin`,
-      [`${req.user.usuario} calificó "${estadia.rows[0].nombre}" con ${puntaje}/5${opinion ? ' y dejó una opinión' : ''}`]
-    );
+    // El aviso le llega solo al dueño de la cabaña
+    if (estadia.rows[0].admin_id) {
+      await client.query(
+        `INSERT INTO notificacion (admin_id, tipo, mensaje)
+         VALUES ($1, 'opinion', $2)`,
+        [
+          estadia.rows[0].admin_id,
+          `${req.user.usuario} calificó "${estadia.rows[0].nombre}" con ${puntaje}/5${opinion ? ' y dejó una opinión' : ''}`
+        ]
+      );
+    }
 
     await client.query('COMMIT');
     res.status(201).json({
@@ -130,6 +135,7 @@ const getPendientes = async (req, res) => {
 };
 
 // ---------- ADMIN: calificaciones por cabaña ----------
+// Cada dueño ve las de sus cabañas; el superadmin ve todas.
 const getCalificacionesAdmin = async (req, res) => {
   const { cabana_id } = req.query;
   if (cabana_id !== undefined && !idValido(cabana_id)) {
@@ -137,6 +143,7 @@ const getCalificacionesAdmin = async (req, res) => {
   }
 
   const filtro = cabana_id === undefined ? null : Number(cabana_id);
+  const dueno = req.user.es_superadmin ? null : req.user.id;
   const { pagina, limite, offset } = paginar(req.query);
 
   try {
@@ -147,14 +154,18 @@ const getCalificacionesAdmin = async (req, res) => {
        FROM cabana c
        JOIN calificacion k ON k.cabana_id = c.id
        WHERE ($1::int IS NULL OR c.id = $1)
+         AND ($2::int IS NULL OR c.admin_id = $2)
        GROUP BY c.id
        ORDER BY c.nombre`,
-      [filtro]
+      [filtro, dueno]
     );
 
     const total = await db.query(
-      'SELECT COUNT(*)::int AS total FROM calificacion k WHERE ($1::int IS NULL OR k.cabana_id = $1)',
-      [filtro]
+      `SELECT COUNT(*)::int AS total
+       FROM calificacion k JOIN cabana c ON c.id = k.cabana_id
+       WHERE ($1::int IS NULL OR k.cabana_id = $1)
+         AND ($2::int IS NULL OR c.admin_id = $2)`,
+      [filtro, dueno]
     );
 
     const lista = await db.query(
@@ -165,9 +176,10 @@ const getCalificacionesAdmin = async (req, res) => {
        JOIN usuario u ON u.id = k.usuario_id
        JOIN cabana c ON c.id = k.cabana_id
        WHERE ($1::int IS NULL OR k.cabana_id = $1)
+         AND ($2::int IS NULL OR c.admin_id = $2)
        ORDER BY c.nombre, k.id DESC
-       LIMIT $2 OFFSET $3`,
-      [filtro, limite, offset]
+       LIMIT $3 OFFSET $4`,
+      [filtro, dueno, limite, offset]
     );
 
     res.json({

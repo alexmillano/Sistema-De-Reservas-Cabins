@@ -1,6 +1,6 @@
 const db = require('../config/db');
-const { esFechaValida, hoy, estaOcupada } = require('../utils/reservas');
-const { CABANA_VISIBLE } = require('../utils/cabanas')
+const { esFechaValida, hoy, estaOcupada, bloqueadaPorOtro } = require('../utils/reservas');
+const { CABANA_VISIBLE } = require('../utils/cabanas');
 
 // Valida un ítem del carrito. Devuelve { status, error } si algo está mal
 // o { valores } con los datos ya limpios.
@@ -39,6 +39,11 @@ const validarItem = async (usuarioId, body, excluirItemId = null) => {
 
   if (await estaOcupada(db, cabana_id, fecha_checkin, fecha_checkout)) {
     return { status: 409, error: 'La cabaña no está disponible para esas fechas' };
+  }
+
+  // Otra persona la está pagando en este momento (bloqueo de 15 minutos)
+  if (await bloqueadaPorOtro(db, cabana_id, fecha_checkin, fecha_checkout, usuarioId)) {
+    return { status: 409, error: 'Esta cabaña está siendo reservada por otra persona. Probá de nuevo en unos minutos' };
   }
 
   // La misma cabaña no puede estar dos veces en el carrito con fechas superpuestas
@@ -154,6 +159,9 @@ const actualizarItem = async (req, res) => {
       [v.fecha_checkin, v.fecha_checkout, v.cantidad_personas, id, req.user.id]
     );
 
+    // Cambiaron las fechas: el bloqueo anterior ya no corresponde
+    await db.query('DELETE FROM bloqueo WHERE usuario_id = $1', [req.user.id]);
+
     res.json({ message: 'Carrito actualizado' });
   } catch (error) {
     console.error(error);
@@ -175,6 +183,10 @@ const quitarDelCarrito = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Ítem no encontrado en tu carrito' });
     }
+
+    // Se quitó una cabaña: se libera el bloqueo para que otra persona pueda tomarla
+    await db.query('DELETE FROM bloqueo WHERE usuario_id = $1', [req.user.id]);
+
     res.json({ message: 'Cabaña quitada del carrito' });
   } catch (error) {
     console.error(error);

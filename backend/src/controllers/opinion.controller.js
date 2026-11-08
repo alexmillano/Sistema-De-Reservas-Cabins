@@ -48,7 +48,8 @@ const getOpinionesCabana = async (req, res) => {
   }
 };
 
-// ---------- ADMIN: todas las opiniones, con filtro por cabaña ----------
+// ---------- ADMIN: opiniones, con filtro por cabaña ----------
+// Cada dueño ve las de sus cabañas; el superadmin ve todas.
 const getOpinionesAdmin = async (req, res) => {
   const { cabana_id } = req.query;
   if (cabana_id !== undefined && !idValido(cabana_id)) {
@@ -56,12 +57,16 @@ const getOpinionesAdmin = async (req, res) => {
   }
 
   const filtro = cabana_id === undefined ? null : Number(cabana_id);
+  const dueno = req.user.es_superadmin ? null : req.user.id;
   const { pagina, limite, offset } = paginar(req.query);
 
   try {
     const total = await db.query(
-      'SELECT COUNT(*)::int AS total FROM opinion o WHERE ($1::int IS NULL OR o.cabana_id = $1)',
-      [filtro]
+      `SELECT COUNT(*)::int AS total
+       FROM opinion o JOIN cabana c ON c.id = o.cabana_id
+       WHERE ($1::int IS NULL OR o.cabana_id = $1)
+         AND ($2::int IS NULL OR c.admin_id = $2)`,
+      [filtro, dueno]
     );
 
     const result = await db.query(
@@ -73,9 +78,10 @@ const getOpinionesAdmin = async (req, res) => {
        JOIN cabana c ON c.id = o.cabana_id
        LEFT JOIN calificacion k ON k.usuario_id = o.usuario_id AND k.cabana_id = o.cabana_id
        WHERE ($1::int IS NULL OR o.cabana_id = $1)
+         AND ($2::int IS NULL OR c.admin_id = $2)
        ORDER BY o.id DESC
-       LIMIT $2 OFFSET $3`,
-      [filtro, limite, offset]
+       LIMIT $3 OFFSET $4`,
+      [filtro, dueno, limite, offset]
     );
 
     res.json({ total: total.rows[0].total, pagina, limite, opiniones: result.rows });
