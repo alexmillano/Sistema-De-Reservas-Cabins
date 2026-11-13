@@ -71,7 +71,7 @@ export default function Checkout() {
   const [confirmacion, setConfirmacion] = useState(null);
   // estado: iniciando | activo | inactivo | error | finalizado
   const [bloqueo, setBloqueo] = useState({ estado: 'iniciando', expira: null, mensaje: '' });
-  const [ahora, setAhora] = useState(Date.now());
+  const [ahora, setAhora] = useState(() => Date.now());
 
   // Pide al servidor que bloquee las cabañas del carrito durante unos minutos
   const bloquear = useCallback(async () => {

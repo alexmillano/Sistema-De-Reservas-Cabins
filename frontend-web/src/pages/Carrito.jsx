@@ -11,23 +11,34 @@ const ENLACES = [
   { texto: 'Resumen de pago', destino: 'resumen' }
 ];
 
+// Pide el carrito a la API y devuelve el nuevo estado (sin tocar React)
+const obtenerCarrito = async () => {
+  try {
+    const { data } = await api.get('/carrito');
+    return { cargando: false, items: data.items, total: data.total, error: '' };
+  } catch (err) {
+    return { cargando: false, items: [], total: 0, error: mensajeError(err) };
+  }
+};
+
 export default function Carrito() {
   const [estado, setEstado] = useState({ cargando: true, items: [], total: 0, error: '' });
   const [quitando, setQuitando] = useState(null);
   const [errorQuitar, setErrorQuitar] = useState('');
 
   const cargar = useCallback(async () => {
-    try {
-      const { data } = await api.get('/carrito');
-      setEstado({ cargando: false, items: data.items, total: data.total, error: '' });
-    } catch (err) {
-      setEstado({ cargando: false, items: [], total: 0, error: mensajeError(err) });
-    }
+    setEstado(await obtenerCarrito());
   }, []);
 
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    let activo = true;
+    obtenerCarrito().then((nuevo) => {
+      if (activo) setEstado(nuevo);
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const abrirQuitar = (item) => {
     setErrorQuitar('');
@@ -123,4 +134,4 @@ export default function Carrito() {
       )}
     </div>
   );
-}
+  }
