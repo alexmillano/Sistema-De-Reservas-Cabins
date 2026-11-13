@@ -207,6 +207,7 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
   justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
 }
 .estrellas { color: #C58B00; }
+.estrellas small { color: var(--marron); }
 .precio { font-size: 1.3rem; font-weight: 700; color: var(--principal); }
 .precio small { font-weight: 400; font-size: 0.85rem; color: var(--texto); }
 
