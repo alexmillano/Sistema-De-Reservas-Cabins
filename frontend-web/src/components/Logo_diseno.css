@@ -1,0 +1,23 @@
+.logo-cabins {
+  display: inline-flex;
+  align-items: center;
+  color: #fff4e6; /* color del logo sobre el navbar marrón */
+  text-decoration: none;
+  line-height: 0;
+  border-radius: 6px;
+  transition: opacity 0.15s ease;
+}
+
+.logo-cabins:hover {
+  opacity: 0.85;
+}
+
+.logo-cabins:focus-visible {
+  outline: 2px solid #f4b26a;
+  outline-offset: 4px;
+}
+
+.logo-cabins svg {
+  display: block;
+  width: auto;
+}

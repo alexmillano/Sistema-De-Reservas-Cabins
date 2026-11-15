@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import Logo from './Logo';
 
+
 const MENU_USUARIO = [
   { texto: 'Reservas', to: '/reservas' },
   { texto: 'Mis Reservas', to: '/mis-reservas' },
@@ -92,7 +93,7 @@ export default function Navbar() {
     return (
       <header className="nav nav-invitado">
         <div className="nav-inner">
-          <Link to="/" className="logo-link"><Logo /><span>CABINS</span></Link>
+          <Logo alto={28} />
           <div className="nav-acciones">
             <Link to="/login" className="nav-link">Iniciar sesión</Link>
             <Link to="/registro" className="btn btn-claro">Registrarse</Link>
@@ -109,7 +110,7 @@ export default function Navbar() {
   return (
     <header className="nav">
       <div className="nav-inner">
-        <Link to="/" className="logo-link"><Logo /><span>CABINS</span></Link>
+        <Logo alto={28} />
 
         <nav className="nav-links"><Enlaces items={items} /></nav>
 
