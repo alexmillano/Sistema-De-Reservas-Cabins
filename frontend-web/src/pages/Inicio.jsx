@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import HeroBanner from '../components/HeroBanner';
 
 const SERVICIOS = [
   { titulo: 'Catálogo con filtros', texto: 'Buscá por provincia, localidad, precio y valoración.' },
@@ -36,11 +36,7 @@ export default function Inicio() {
 
   return (
     <>
-      <section className="hero">
-        <h1>Desconectá en la naturaleza de Argentina</h1>
-        <p>Cabañas para escaparte del ritmo de la ciudad, en las provincias de todo el país.</p>
-        <Link to={cta.to} className="btn btn-claro">{cta.texto}</Link>
-      </section>
+      <HeroBanner cta={cta} anclaSecundaria="como-alquilar" />
 
       <section className="seccion">
         <h2>Quiénes somos</h2>
@@ -71,7 +67,7 @@ export default function Inicio() {
         </div>
       </section>
 
-      <section className="seccion">
+      <section className="seccion" id="como-alquilar">
         <h2>¿Cómo alquilar?</h2>
         <div className="grilla">
           {PASOS.map((texto, i) => (
