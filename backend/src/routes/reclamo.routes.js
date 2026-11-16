@@ -1,19 +1,21 @@
 const express = require('express');
-const router = express.Router();
 const {
-  crearReclamo, getMisReclamos, getReclamosAdmin, getMensajes, enviarMensaje, cerrarReclamo
+  crearReclamo, getMisReclamos, getReclamosAdmin,
+  getMensajes, enviarMensaje, cerrarReclamo
 } = require('../controllers/reclamo.controller');
-const { verifyToken, verifyUsuario, verifyAdmin } = require('../middlewares/auth.middleware');
+const { verifyToken, verifyUsuario, verifyAdmin, verifyDueno } = require('../middlewares/auth.middleware');
+
+const router = express.Router();
 
 // Usuario
 router.get('/mis-reclamos', verifyUsuario, getMisReclamos);
 router.post('/', verifyUsuario, crearReclamo);
 
-// Admin
+// Dueño (ve solo los de sus cabañas) y superadmin (ve todos, solo lectura)
 router.get('/', verifyAdmin, getReclamosAdmin);
-router.put('/:id/cerrar', verifyAdmin, cerrarReclamo);
+router.put('/:id/cerrar', verifyDueno, cerrarReclamo);
 
-// Chat: usuario (solo sus reclamos) y admin (todos)
+// Chat: el permiso fino (usuario del reclamo / dueño de la cabaña / superadmin) está en el controlador
 router.get('/:id/mensajes', verifyToken, getMensajes);
 router.post('/:id/mensajes', verifyToken, enviarMensaje);
 
