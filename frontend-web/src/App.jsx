@@ -22,7 +22,7 @@ import Calificaciones from './pages/Calificaciones';
 import Opiniones from './pages/Opiniones';
 import Administradores from './pages/Administradores';
 import Usuarios from './pages/Usuarios';
-import { NoEncontrada } from './pages/Pendiente';
+import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 export default function App() {
   return (
@@ -33,6 +33,7 @@ export default function App() {
             <Route index element={<Inicio />} />
             <Route path="login" element={<Login />} />
             <Route path="registro" element={<Registro />} />
+            <Route path="recuperar-contrasena" element={<Pendiente titulo="Recuperar contraseña" />} />
 
             <Route element={<ProtectedRoute roles={['usuario']} />}>
               <Route path="reservas" element={<Reservas />} />
