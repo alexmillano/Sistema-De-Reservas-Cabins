@@ -9,11 +9,13 @@ import Reservas from './pages/Reservas';
 import DetalleCabana from './pages/DetalleCabana';
 import Carrito from './pages/Carrito';
 import Checkout from './pages/Checkout';
+import MisReservas from './pages/MisReservas';
+import Perfil from './pages/Perfil';
+import Ayuda from './pages/Ayuda';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 // Pantallas que se construyen más adelante; se van reemplazando una por una
 const RUTAS_USUARIO = [
-  ['mis-reservas', 'Mis Reservas'],
   ['reclamos', 'Reclamos']
 ];
 
@@ -52,6 +54,7 @@ export default function App() {
               <Route path="cabanas/:id" element={<DetalleCabana />} />
               <Route path="carrito" element={<Carrito />} />
               <Route path="checkout" element={<Checkout />} />
+              <Route path="mis-reservas" element={<MisReservas />} />
               {rutasPendientes(RUTAS_USUARIO)}
             </Route>
 
@@ -64,8 +67,8 @@ export default function App() {
             </Route>
 
             <Route element={<ProtectedRoute />}>
-              <Route path="perfil" element={<Pendiente titulo="Perfil" />} />
-              <Route path="ayuda" element={<Pendiente titulo="Ayuda" />} />
+              <Route path="perfil" element={<Perfil />} />
+              <Route path="ayuda" element={<Ayuda />} />
             </Route>
 
             <Route path="*" element={<NoEncontrada />} />

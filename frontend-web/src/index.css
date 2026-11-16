@@ -301,3 +301,57 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
   .item-carrito .cabana-img { height: 170px; min-height: 0; }
   .item-cuerpo { padding: 0 1.25rem 1.1rem; }
 }
+/* ---------- Mis Reservas, Perfil y Ayuda ---------- */
+.texto-suave { color: #6b5a4a; font-size: 0.95rem; }
+.modal-ancho { width: min(94vw, 480px); max-height: 90vh; overflow-y: auto; }
+.campo textarea {
+  padding: 0.7rem 0.8rem; border: 1px solid var(--borde); border-radius: 8px;
+  font: inherit; resize: vertical; background: #fff;
+}
+.campo textarea:focus { outline: 2px solid var(--principal); border-color: transparent; }
+.btn-peligro { background: #B03A2E; }
+.nuevo-total { background: var(--hueso); padding: 0.6rem 0.9rem; border-radius: 8px; }
+.reserva-card { margin-bottom: 1rem; }
+.reserva-cabecera { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.reserva-cabecera h3 { margin: 0.1rem 0; }
+.reserva-derecha { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; }
+.codigo-reserva { font-size: 0.8rem; color: #6b5a4a; text-transform: uppercase; letter-spacing: 0.04em; }
+.precio-tachado { text-decoration: line-through; color: #8a7a6a; font-size: 1.2rem; }
+.estado { font-size: 0.8rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 999px; background: var(--hueso); }
+.estado-pendiente { background: #FFF3CD; color: #664d03; }
+.estado-confirmada { background: #D4EDDA; color: #155724; }
+.estado-completada { background: #E2D8C8; color: var(--marron); }
+.estado-cancelada { background: #FADBD8; color: #7B241C; }
+.selector-estrellas { display: flex; gap: 0.25rem; }
+.estrella { background: none; border: 0; font-size: 2rem; line-height: 1; cursor: pointer; color: #cfc3b0; padding: 0; }
+.estrella.llena { color: #C58B00; }
+.perfil { max-width: 720px; }
+.perfil .tarjeta { margin-bottom: 1.25rem; }
+.avatar {
+  width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 0.75rem;
+  background: var(--principal); color: #fff; font-size: 1.8rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; text-transform: uppercase;
+}
+.perfil-cabecera h1 { margin: 0.25rem 0; font-size: 1.6rem; }
+.perfil-cabecera p { margin: 0.15rem 0; }
+.perfil-stats { display: flex; justify-content: center; gap: 2.5rem; margin-top: 1rem; background: var(--hueso); border-radius: 10px; padding: 0.8rem; }
+.perfil-stats div { display: flex; flex-direction: column; }
+.perfil-stats strong { font-size: 1.4rem; }
+.btn-cerrar-sesion {
+  width: 100%; padding: 0.8rem; border: 0; border-radius: 10px; cursor: pointer;
+  background: #FADBD8; color: #7B241C; font-weight: 700; font-size: 1rem;
+}
+.ayuda-buscador { display: flex; gap: 0.5rem; max-width: 560px; margin: 1rem auto 2rem; }
+.ayuda-buscador input { flex: 1; padding: 0.8rem 1rem; border: 1px solid var(--borde); border-radius: 10px; font: inherit; }
+.faq { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2rem; }
+.faq-item { padding: 0; }
+.faq-pregunta {
+  width: 100%; display: flex; justify-content: space-between; gap: 1rem; text-align: left;
+  background: none; border: 0; padding: 1rem 1.25rem; font: inherit; font-weight: 600; cursor: pointer; color: var(--texto);
+}
+.faq-respuesta { margin: 0; padding: 0 1.25rem 1.1rem; color: #4a3d30; }
+.ayuda-contacto { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 2rem; background: var(--hueso); }
+.ayuda-contacto h2 { margin-top: 0; }
+@media (max-width: 600px) {
+  .reserva-derecha { align-items: flex-start; }
+}

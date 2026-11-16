@@ -1,0 +1,225 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api, { mensajeError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import { contarNoches, formatearFechaCorta } from '../utils/fechas';
+
+const CAMPOS_VACIOS = { nombre: '', apellido: '', email: '', usuario: '', fecha_nacimiento: '' };
+
+const aFormulario = (p) => ({
+  nombre: p.nombre, apellido: p.apellido, email: p.email, usuario: p.usuario,
+  fecha_nacimiento: p.fecha_nacimiento || ''
+});
+
+export default function Perfil() {
+  const { user, logout, actualizarUsuario } = useAuth();
+  const navigate = useNavigate();
+  const [perfil, setPerfil] = useState(null);
+  const [estadisticas, setEstadisticas] = useState(null);
+  const [errorCarga, setErrorCarga] = useState('');
+  const [pestana, setPestana] = useState('datos');
+  const [form, setForm] = useState(CAMPOS_VACIOS);
+  const [msg, setMsg] = useState({ tipo: '', texto: '' });
+  const [guardando, setGuardando] = useState(false);
+  const [pass, setPass] = useState({ password_actual: '', password_nueva: '', repetir: '' });
+  const [msgPass, setMsgPass] = useState({ tipo: '', texto: '' });
+  const [cambiandoPass, setCambiandoPass] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+    api.get('/perfil')
+      .then(({ data }) => {
+        if (!activo) return;
+        setPerfil(data);
+        setForm(aFormulario(data));
+      })
+      .catch((err) => activo && setErrorCarga(mensajeError(err)));
+
+    if (user?.rol === 'usuario') {
+      api.get('/reservas/mis-reservas')
+        .then(({ data }) => {
+          if (!activo) return;
+          const hechas = data.filter((r) => r.estado === 'completada');
+          setEstadisticas({
+            estadias: hechas.length,
+            noches: hechas.reduce((a, r) => a + contarNoches(r.fecha_checkin, r.fecha_checkout), 0)
+          });
+        })
+        .catch(() => {});
+    }
+    return () => {
+      activo = false;
+    };
+  }, [user?.rol]);
+
+  const cambiar = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    setMsg({ tipo: '', texto: '' });
+    setGuardando(true);
+    try {
+      const { data } = await api.put('/perfil', { ...form, fecha_nacimiento: form.fecha_nacimiento || null });
+      setPerfil(data.perfil);
+      setForm(aFormulario(data.perfil));
+      actualizarUsuario({
+        nombre: data.perfil.nombre, apellido: data.perfil.apellido,
+        email: data.perfil.email, usuario: data.perfil.usuario
+      });
+      setMsg({ tipo: 'exito', texto: 'Datos actualizados correctamente.' });
+    } catch (err) {
+      setMsg({ tipo: 'error', texto: mensajeError(err) });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const cambiarPassword = async (e) => {
+    e.preventDefault();
+    setMsgPass({ tipo: '', texto: '' });
+    if (pass.password_nueva.length < 8) {
+      return setMsgPass({ tipo: 'error', texto: 'La contraseña nueva debe tener al menos 8 caracteres.' });
+    }
+    if (pass.password_nueva !== pass.repetir) {
+      return setMsgPass({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden.' });
+    }
+    setCambiandoPass(true);
+    try {
+      await api.put('/perfil/password', {
+        password_actual: pass.password_actual,
+        password_nueva: pass.password_nueva
+      });
+      setPass({ password_actual: '', password_nueva: '', repetir: '' });
+      setMsgPass({ tipo: 'exito', texto: 'Contraseña actualizada correctamente.' });
+    } catch (err) {
+      setMsgPass({ tipo: 'error', texto: mensajeError(err) });
+    } finally {
+      setCambiandoPass(false);
+    }
+  };
+
+  const cerrarSesion = () => {
+    logout();
+    navigate('/');
+  };
+
+  if (errorCarga) return <section className="seccion"><div className="mensaje-error">{errorCarga}</div></section>;
+  if (!perfil) return <section className="seccion"><p>Cargando perfil...</p></section>;
+
+  const rolTexto = perfil.es_superadmin ? 'Superadministrador'
+    : perfil.rol === 'admin' ? 'Dueño de cabañas' : 'Huésped';
+
+  return (
+    <section className="seccion perfil">
+      <div className="tarjeta perfil-cabecera centrado">
+        <div className="avatar" aria-hidden="true">
+          {perfil.nombre[0]}{perfil.apellido[0]}
+        </div>
+        <h1>{perfil.nombre} {perfil.apellido}</h1>
+        <p>{perfil.email}</p>
+        <p className="texto-suave">@{perfil.usuario} · {rolTexto}</p>
+        <p className="texto-suave">Miembro desde {formatearFechaCorta(String(perfil.created_at).slice(0, 10))}</p>
+        {estadisticas && (
+          <div className="perfil-stats">
+            <div><strong>{estadisticas.estadias}</strong><span>Estadías</span></div>
+            <div><strong>{estadisticas.noches}</strong><span>Noches</span></div>
+          </div>
+        )}
+      </div>
+
+      <div className="pestanas" role="tablist">
+        <button type="button" role="tab" aria-selected={pestana === 'datos'}
+          className={pestana === 'datos' ? 'activa' : ''} onClick={() => setPestana('datos')}>
+          Mis datos
+        </button>
+        <button type="button" role="tab" aria-selected={pestana === 'seguridad'}
+          className={pestana === 'seguridad' ? 'activa' : ''} onClick={() => setPestana('seguridad')}>
+          Seguridad
+        </button>
+      </div>
+
+      {pestana === 'datos' && (
+        <form className="tarjeta" onSubmit={guardar}>
+          <h2>Información personal</h2>
+          <div className="form-fila">
+            <div className="campo">
+              <label htmlFor="p-nombre">Nombre</label>
+              <input id="p-nombre" name="nombre" maxLength={100} value={form.nombre} onChange={cambiar} required />
+            </div>
+            <div className="campo">
+              <label htmlFor="p-apellido">Apellido</label>
+              <input id="p-apellido" name="apellido" maxLength={100} value={form.apellido} onChange={cambiar} required />
+            </div>
+          </div>
+          <div className="campo">
+            <label htmlFor="p-email">Correo electrónico</label>
+            <input id="p-email" name="email" type="email" maxLength={150} value={form.email} onChange={cambiar} required />
+          </div>
+          <div className="form-fila">
+            <div className="campo">
+              <label htmlFor="p-usuario">Usuario</label>
+              <input id="p-usuario" name="usuario" maxLength={50} value={form.usuario} onChange={cambiar} required />
+            </div>
+            <div className="campo">
+              <label htmlFor="p-nac">Fecha de nacimiento (opcional)</label>
+              <input id="p-nac" name="fecha_nacimiento" type="date" min="1900-01-01"
+                value={form.fecha_nacimiento} onChange={cambiar} />
+            </div>
+          </div>
+          {msg.texto && <div className={msg.tipo === 'exito' ? 'mensaje-exito' : 'mensaje-error'} role="status">{msg.texto}</div>}
+          <button className="btn" type="submit" disabled={guardando}>
+            {guardando ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </form>
+      )}
+
+      {pestana === 'seguridad' && (
+        <form className="tarjeta" onSubmit={cambiarPassword}>
+          <h2>Cambiar contraseña</h2>
+          <div className="campo">
+            <label htmlFor="s-actual">Contraseña actual</label>
+            <input id="s-actual" type="password" autoComplete="current-password"
+              value={pass.password_actual}
+              onChange={(e) => setPass({ ...pass, password_actual: e.target.value })} required />
+          </div>
+          <div className="campo">
+            <label htmlFor="s-nueva">Contraseña nueva (mínimo 8 caracteres)</label>
+            <input id="s-nueva" type="password" autoComplete="new-password"
+              value={pass.password_nueva}
+              onChange={(e) => setPass({ ...pass, password_nueva: e.target.value })} required />
+          </div>
+          <div className="campo">
+            <label htmlFor="s-repetir">Repetir contraseña nueva</label>
+            <input id="s-repetir" type="password" autoComplete="new-password"
+              value={pass.repetir}
+              onChange={(e) => setPass({ ...pass, repetir: e.target.value })} required />
+          </div>
+          {msgPass.texto && <div className={msgPass.tipo === 'exito' ? 'mensaje-exito' : 'mensaje-error'} role="status">{msgPass.texto}</div>}
+          <button className="btn" type="submit" disabled={cambiandoPass}>
+            {cambiandoPass ? 'Actualizando...' : 'Actualizar contraseña'}
+          </button>
+        </form>
+      )}
+
+      <button type="button" className="btn-cerrar-sesion" onClick={() => setConfirmando(true)}>
+        Cerrar sesión
+      </button>
+
+      {confirmando && (
+        <div className="modal-fondo" onClick={() => setConfirmando(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Cerrar sesión</h3>
+            <p>¿Estás seguro que querés cerrar sesión?</p>
+            <div className="modal-botones">
+              <button type="button" className="btn btn-secundario" onClick={() => setConfirmando(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn" onClick={cerrarSesion}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
