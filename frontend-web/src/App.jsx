@@ -17,15 +17,12 @@ import FormularioCabana from './pages/FormularioCabana';
 import GestionarReservas from './pages/GestionarReservas';
 import Notificaciones from './pages/Notificaciones';
 import Reclamos from './pages/Reclamos';
+import Finanzas from './pages/Finanzas';
+import Calificaciones from './pages/Calificaciones';
+import Opiniones from './pages/Opiniones';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 // Pantallas que se construyen más adelante; se van reemplazando una por una
-const RUTAS_ADMIN = [
-  ['admin/finanzas', 'Finanzas'],
-  ['admin/calificaciones', 'Calificaciones'],
-  ['admin/opiniones', 'Opiniones']
-];
-
 const RUTAS_SUPERADMIN = [
   ['admin/admins', 'Administradores'],
   ['admin/usuarios', 'Usuarios']
@@ -65,7 +62,9 @@ export default function App() {
               <Route path="admin/reservas" element={<GestionarReservas />} />
               <Route path="admin/notificaciones" element={<Notificaciones />} />
               <Route path="admin/reclamos" element={<Reclamos />} />
-              {rutasPendientes(RUTAS_ADMIN)}
+              <Route path="admin/finanzas" element={<Finanzas />} />
+              <Route path="admin/calificaciones" element={<Calificaciones />} />
+              <Route path="admin/opiniones" element={<Opiniones />} />
             </Route>
 
             <Route element={<ProtectedRoute roles={['admin']} superadmin />}>
