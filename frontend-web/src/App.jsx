@@ -20,18 +20,9 @@ import Reclamos from './pages/Reclamos';
 import Finanzas from './pages/Finanzas';
 import Calificaciones from './pages/Calificaciones';
 import Opiniones from './pages/Opiniones';
-import Pendiente, { NoEncontrada } from './pages/Pendiente';
-
-// Pantallas que se construyen más adelante; se van reemplazando una por una
-const RUTAS_SUPERADMIN = [
-  ['admin/admins', 'Administradores'],
-  ['admin/usuarios', 'Usuarios']
-];
-
-const rutasPendientes = (lista) =>
-  lista.map(([ruta, titulo]) => (
-    <Route key={ruta} path={ruta} element={<Pendiente titulo={titulo} />} />
-  ));
+import Administradores from './pages/Administradores';
+import Usuarios from './pages/Usuarios';
+import { NoEncontrada } from './pages/Pendiente';
 
 export default function App() {
   return (
@@ -68,7 +59,8 @@ export default function App() {
             </Route>
 
             <Route element={<ProtectedRoute roles={['admin']} superadmin />}>
-              {rutasPendientes(RUTAS_SUPERADMIN)}
+              <Route path="admin/admins" element={<Administradores />} />
+              <Route path="admin/usuarios" element={<Usuarios />} />
             </Route>
 
             <Route element={<ProtectedRoute />}>

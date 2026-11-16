@@ -10,7 +10,15 @@ export default function Login() {
   const [modo, setModo] = useState('usuario');
   const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    try {
+      const aviso = sessionStorage.getItem('aviso_login') || '';
+      sessionStorage.removeItem('aviso_login');
+      return aviso;
+    } catch {
+      return '';
+    }
+  });
   const [cargando, setCargando] = useState(false);
 
   if (user) return <Navigate to="/" replace />;

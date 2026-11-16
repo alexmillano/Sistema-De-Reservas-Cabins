@@ -64,6 +64,10 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
+    if (user.baneado) {
+      return res.status(403).json({ message: 'Tu usuario se encuentra inactivo, contactate para solucionar' });
+    }
+
     const token = generarToken({ id: user.id, usuario: user.usuario, rol: 'usuario' });
 
     res.json({
@@ -97,6 +101,10 @@ const loginAdmin = async (req, res) => {
     const valida = await bcrypt.compare(password, admin.password);
     if (!valida) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
+
+    if (admin.baneado) {
+      return res.status(403).json({ message: 'Tu usuario se encuentra inactivo, contactate para solucionar' });
     }
 
     const token = generarToken({

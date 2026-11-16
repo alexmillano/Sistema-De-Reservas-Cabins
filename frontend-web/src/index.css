@@ -453,3 +453,11 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .opinion-admin { margin-bottom: 1rem; }
 .opinion-texto { margin: 0.6rem 0 0; font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .graficos-fila { grid-template-columns: 1fr; } }
+
+/* ---------- Administradores y usuarios ---------- */
+.fila-cuenta { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; padding: 1rem 1.25rem; }
+.cuenta-datos { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.cuenta-suspendida { background: #FDF3F2; }
+.motivo-baneo { color: #7B241C; font-size: 0.9rem; }
+.cuenta-afectada { background: var(--hueso); padding: 0.75rem 1rem; border-radius: 8px; }
+.buscador-izq { margin: 1rem 0; max-width: 640px; }

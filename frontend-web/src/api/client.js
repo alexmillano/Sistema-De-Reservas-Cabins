@@ -26,6 +26,12 @@ api.interceptors.response.use(
     if (sesionInvalida && localStorage.getItem('token') && !esLogin) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // El login muestra por qué se cerró la sesión, para que no parezca un error de la web
+      try {
+        sessionStorage.setItem('aviso_login', mensaje === 'Tu cuenta está suspendida'
+          ? 'Tu usuario se encuentra inactivo, contactate para solucionar'
+          : 'Tu sesión venció. Iniciá sesión de nuevo.');
+      } catch { /* sin sessionStorage el aviso simplemente no se muestra */ }
       window.location.assign('/login');
     }
     return Promise.reject(error);
