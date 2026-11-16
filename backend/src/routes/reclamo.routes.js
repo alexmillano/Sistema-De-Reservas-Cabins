@@ -1,6 +1,6 @@
 const express = require('express');
 const {
-  crearReclamo, getMisReclamos, getReclamosAdmin,
+  crearReclamo, getMisReclamos, getNoLeidosUsuario, getReclamosAdmin,
   getMensajes, enviarMensaje, cerrarReclamo
 } = require('../controllers/reclamo.controller');
 const { verifyToken, verifyUsuario, verifyAdmin, verifyDueno } = require('../middlewares/auth.middleware');
@@ -9,6 +9,7 @@ const router = express.Router();
 
 // Usuario
 router.get('/mis-reclamos', verifyUsuario, getMisReclamos);
+router.get('/no-leidos', verifyUsuario, getNoLeidosUsuario);
 router.post('/', verifyUsuario, crearReclamo);
 
 // Dueño (ve solo los de sus cabañas) y superadmin (ve todos, solo lectura)

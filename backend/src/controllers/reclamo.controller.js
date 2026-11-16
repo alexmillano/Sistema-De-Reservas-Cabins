@@ -37,7 +37,7 @@ const SELECT_RECLAMO = `
 // Devuelve el reclamo solo si esta persona puede verlo; si no, 404 (no se revela que existe)
 const obtenerReclamo = async (req, id, cliente = db) => {
   const r = await cliente.query(
-    `SELECT r.id, r.estado, r.usuario_id, c.admin_id AS dueno_id
+    `SELECT r.id, r.estado, r.asunto, r.reserva_id, r.usuario_id, c.admin_id AS dueno_id
      FROM reclamo r
      LEFT JOIN reserva res ON r.reserva_id = res.id
      LEFT JOIN cabana c ON res.cabana_id = c.id
@@ -136,6 +136,21 @@ const getMisReclamos = async (req, res) => {
   }
 };
 
+// ---------- USUARIO: cuántos mensajes sin leer tiene en total (para el número de la barra) ----------
+const getNoLeidosUsuario = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS no_leidos
+       FROM mensaje_reclamo m JOIN reclamo r ON r.id = m.reclamo_id
+       WHERE r.usuario_id = $1 AND m.remitente_tipo = 'admin' AND m.leido_at IS NULL`,
+      [req.user.id]
+    );
+    res.json({ no_leidos: result.rows[0].no_leidos });
+  } catch (error) {
+    responderError(res, error);
+  }
+};
+
 // ---------- ADMIN: reclamos de mis cabañas (el superadmin ve todos) ----------
 const getReclamosAdmin = async (req, res) => {
   const { estado } = req.query;
@@ -181,7 +196,7 @@ const getMensajes = async (req, res) => {
   }
 
   try {
-    await obtenerReclamo(req, id);
+    const reclamo = await obtenerReclamo(req, id);
 
     // Al abrir el chat, los mensajes del otro lado quedan como vistos.
     // El superadmin solo mira: no marca nada.
@@ -196,6 +211,13 @@ const getMensajes = async (req, res) => {
       await db.query(
         `UPDATE mensaje_reclamo SET leido_at = NOW()
          WHERE reclamo_id = $1 AND remitente_tipo = 'usuario' AND leido_at IS NULL`, [id]);
+      if (reclamo.reserva_id) {
+        await db.query(
+          `UPDATE notificacion SET leida = TRUE
+           WHERE admin_id = $1 AND tipo = 'reclamo' AND reserva_id = $2 AND leida = FALSE`,
+          [req.user.id, reclamo.reserva_id]
+        );
+      }
     }
 
     const [cabecera, mensajes, visto] = await Promise.all([
@@ -263,6 +285,20 @@ const enviarMensaje = async (req, res) => {
       await client.query("UPDATE reclamo SET estado = 'en_proceso' WHERE id = $1", [id]);
     }
 
+    // Cada mensaje del huésped avisa al dueño en la campana. Si ya tiene un aviso sin leer
+    // de este mismo reclamo, no se repite: así no se llena de alertas durante una charla larga.
+    if (tipo === 'usuario' && reclamo.dueno_id) {
+      await client.query(
+        `INSERT INTO notificacion (admin_id, tipo, mensaje, reserva_id)
+         SELECT $1, 'reclamo', $2, $3
+         WHERE NOT EXISTS (
+           SELECT 1 FROM notificacion
+           WHERE admin_id = $1 AND tipo = 'reclamo' AND reserva_id = $3 AND leida = FALSE
+         )`,
+        [reclamo.dueno_id, `Nuevo mensaje de ${req.user.usuario} en el reclamo "${reclamo.asunto}"`.slice(0, 500), reclamo.reserva_id]
+      );
+    }
+
     await client.query('COMMIT');
     res.status(201).json(nuevo.rows[0]);
   } catch (error) {
@@ -290,4 +326,4 @@ const cerrarReclamo = async (req, res) => {
   }
 };
 
-module.exports = { crearReclamo, getMisReclamos, getReclamosAdmin, getMensajes, enviarMensaje, cerrarReclamo };
+module.exports = { crearReclamo, getMisReclamos, getNoLeidosUsuario, getReclamosAdmin, getMensajes, enviarMensaje, cerrarReclamo };

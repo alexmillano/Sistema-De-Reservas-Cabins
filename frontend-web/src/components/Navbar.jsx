@@ -50,7 +50,10 @@ function Enlaces({ items }) {
             </div>
           </div>
         ) : (
-          <NavLink key={item.to} to={item.to} className={claseActiva}>{item.texto}</NavLink>
+          <NavLink key={item.to} to={item.to} className={claseActiva}>
+            {item.texto}
+            {item.badge > 0 && <span className="badge badge-inline-nav" title="Mensajes sin leer">{item.badge}</span>}
+          </NavLink>
         )
       )}
     </>
@@ -64,6 +67,7 @@ export default function Navbar() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [noLeidas, setNoLeidas] = useState(0);
+  const [reclamosSinLeer, setReclamosSinLeer] = useState(0);
   const menuRef = useRef(null);
 
   // El menú del usuario se cierra al hacer clic afuera
@@ -75,18 +79,31 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', cerrarAlClickAfuera);
   }, []);
 
-  // El admin ve cuántas notificaciones tiene sin leer (se actualiza al cambiar de pantalla)
-  // También se actualiza cuando la pantalla de notificaciones marca avisos como leídos
+  // Contadores de la barra. Se actualizan al cambiar de pantalla, cada 20 segundos
+  // y cuando una pantalla avisa que algo cambió (por ejemplo, al leer un chat).
   useEffect(() => {
-    if (user?.rol !== 'admin') return;
+    if (!user) return;
     const actualizar = () => {
-      api.get('/notificaciones', { params: { limite: 1 } })
-        .then(({ data }) => setNoLeidas(data.no_leidas))
-        .catch(() => {});
+      if (document.hidden) return;
+      if (user.rol === 'admin') {
+        api.get('/notificaciones', { params: { limite: 1 } })
+          .then(({ data }) => setNoLeidas(data.no_leidas))
+          .catch(() => {});
+      } else {
+        api.get('/reclamos/no-leidos')
+          .then(({ data }) => setReclamosSinLeer(data.no_leidos))
+          .catch(() => {});
+      }
     };
     actualizar();
+    const id = setInterval(actualizar, 20000);
     window.addEventListener('notificaciones-cambio', actualizar);
-    return () => window.removeEventListener('notificaciones-cambio', actualizar);
+    window.addEventListener('reclamos-cambio', actualizar);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('notificaciones-cambio', actualizar);
+      window.removeEventListener('reclamos-cambio', actualizar);
+    };
   }, [user, location.pathname]);
 
   const cerrarSesion = () => {
@@ -116,7 +133,7 @@ export default function Navbar() {
   );
   const items = user.rol === 'admin'
     ? (user.es_superadmin ? [...menuSuperadmin, MENU_SUPERADMIN] : MENU_ADMIN)
-    : MENU_USUARIO;
+    : MENU_USUARIO.map((item) => (item.to === '/reclamos' ? { ...item, badge: reclamosSinLeer } : item));
 
   return (
     <header className="nav">

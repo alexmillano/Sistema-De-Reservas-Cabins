@@ -16,16 +16,12 @@ import MisCabanas from './pages/MisCabanas';
 import FormularioCabana from './pages/FormularioCabana';
 import GestionarReservas from './pages/GestionarReservas';
 import Notificaciones from './pages/Notificaciones';
+import Reclamos from './pages/Reclamos';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 // Pantallas que se construyen más adelante; se van reemplazando una por una
-const RUTAS_USUARIO = [
-  ['reclamos', 'Reclamos']
-];
-
 const RUTAS_ADMIN = [
   ['admin/finanzas', 'Finanzas'],
-  ['admin/reclamos', 'Reclamos'],
   ['admin/calificaciones', 'Calificaciones'],
   ['admin/opiniones', 'Opiniones']
 ];
@@ -56,7 +52,7 @@ export default function App() {
               <Route path="carrito" element={<Carrito />} />
               <Route path="checkout" element={<Checkout />} />
               <Route path="mis-reservas" element={<MisReservas />} />
-              {rutasPendientes(RUTAS_USUARIO)}
+              <Route path="reclamos" element={<Reclamos />} />
             </Route>
 
             <Route element={<ProtectedRoute roles={['admin']} dueno />}>
@@ -68,6 +64,7 @@ export default function App() {
               <Route path="admin/cabanas" element={<MisCabanas />} />
               <Route path="admin/reservas" element={<GestionarReservas />} />
               <Route path="admin/notificaciones" element={<Notificaciones />} />
+              <Route path="admin/reclamos" element={<Reclamos />} />
               {rutasPendientes(RUTAS_ADMIN)}
             </Route>
 
