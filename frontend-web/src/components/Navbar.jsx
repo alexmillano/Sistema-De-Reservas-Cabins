@@ -14,6 +14,7 @@ const MENU_USUARIO = [
 
 const MENU_ADMIN = [
   { texto: 'Reservas', hijos: [
+    { texto: 'Mis Cabañas', to: '/admin/cabanas' },
     { texto: 'Crear Cabaña', to: '/admin/crear-cabana' },
     { texto: 'Gestionar Reservas', to: '/admin/reservas' }
   ] },
@@ -75,11 +76,17 @@ export default function Navbar() {
   }, []);
 
   // El admin ve cuántas notificaciones tiene sin leer (se actualiza al cambiar de pantalla)
+  // También se actualiza cuando la pantalla de notificaciones marca avisos como leídos
   useEffect(() => {
     if (user?.rol !== 'admin') return;
-    api.get('/notificaciones', { params: { limite: 1 } })
-      .then(({ data }) => setNoLeidas(data.no_leidas))
-      .catch(() => {});
+    const actualizar = () => {
+      api.get('/notificaciones', { params: { limite: 1 } })
+        .then(({ data }) => setNoLeidas(data.no_leidas))
+        .catch(() => {});
+    };
+    actualizar();
+    window.addEventListener('notificaciones-cambio', actualizar);
+    return () => window.removeEventListener('notificaciones-cambio', actualizar);
   }, [user, location.pathname]);
 
   const cerrarSesion = () => {
@@ -103,8 +110,12 @@ export default function Navbar() {
     );
   }
 
+  // El superadmin solo consulta: no ve "Crear Cabaña"
+  const menuSuperadmin = MENU_ADMIN.map((item) =>
+    item.hijos ? { ...item, hijos: item.hijos.filter((h) => h.to !== '/admin/crear-cabana') } : item
+  );
   const items = user.rol === 'admin'
-    ? (user.es_superadmin ? [...MENU_ADMIN, MENU_SUPERADMIN] : MENU_ADMIN)
+    ? (user.es_superadmin ? [...menuSuperadmin, MENU_SUPERADMIN] : MENU_ADMIN)
     : MENU_USUARIO;
 
   return (

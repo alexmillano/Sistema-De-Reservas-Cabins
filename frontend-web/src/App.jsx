@@ -12,6 +12,10 @@ import Checkout from './pages/Checkout';
 import MisReservas from './pages/MisReservas';
 import Perfil from './pages/Perfil';
 import Ayuda from './pages/Ayuda';
+import MisCabanas from './pages/MisCabanas';
+import FormularioCabana from './pages/FormularioCabana';
+import GestionarReservas from './pages/GestionarReservas';
+import Notificaciones from './pages/Notificaciones';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 // Pantallas que se construyen más adelante; se van reemplazando una por una
@@ -20,13 +24,10 @@ const RUTAS_USUARIO = [
 ];
 
 const RUTAS_ADMIN = [
-  ['admin/crear-cabana', 'Crear Cabaña'],
-  ['admin/reservas', 'Gestionar Reservas'],
   ['admin/finanzas', 'Finanzas'],
   ['admin/reclamos', 'Reclamos'],
   ['admin/calificaciones', 'Calificaciones'],
-  ['admin/opiniones', 'Opiniones'],
-  ['admin/notificaciones', 'Notificaciones']
+  ['admin/opiniones', 'Opiniones']
 ];
 
 const RUTAS_SUPERADMIN = [
@@ -58,7 +59,15 @@ export default function App() {
               {rutasPendientes(RUTAS_USUARIO)}
             </Route>
 
+            <Route element={<ProtectedRoute roles={['admin']} dueno />}>
+              <Route path="admin/crear-cabana" element={<FormularioCabana />} />
+              <Route path="admin/cabanas/:id/editar" element={<FormularioCabana />} />
+            </Route>
+
             <Route element={<ProtectedRoute roles={['admin']} />}>
+              <Route path="admin/cabanas" element={<MisCabanas />} />
+              <Route path="admin/reservas" element={<GestionarReservas />} />
+              <Route path="admin/notificaciones" element={<Notificaciones />} />
               {rutasPendientes(RUTAS_ADMIN)}
             </Route>
 

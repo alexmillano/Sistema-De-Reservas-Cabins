@@ -355,3 +355,25 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 @media (max-width: 600px) {
   .reserva-derecha { align-items: flex-start; }
 }
+
+/* ---------- Panel del dueño ---------- */
+.cabana-inactiva { opacity: 0.75; }
+.cabana-inactiva .cabana-img { filter: grayscale(1); }
+.formulario-cabana { max-width: 820px; }
+.formulario-cabana h2 { font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+.formulario-cabana h2:first-child { margin-top: 0; }
+.campo select:disabled { background: #f2eee8; }
+.medios-pago { border: 1px solid var(--borde); border-radius: 8px; padding: 0.6rem 1rem; display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.medios-pago legend { font-weight: 600; font-size: 0.9rem; padding: 0 0.4rem; }
+.check { display: flex; align-items: center; gap: 0.4rem; }
+.vista-previa { border: 1px dashed var(--borde); box-shadow: none; }
+.vista-previa .cabana-img { height: 100%; }
+.reserva-admin { margin-bottom: 1rem; }
+.paginacion { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
+.notificacion { display: flex; gap: 1rem; margin-bottom: 0.9rem; border-left: 4px solid var(--principal); }
+.notificacion.leida { border-left-color: var(--borde); opacity: 0.8; }
+.notificacion-icono { font-size: 1.6rem; }
+.notificacion-cuerpo { flex: 1; min-width: 0; }
+.notificacion-cuerpo p { margin: 0.35rem 0; }
+.notificacion-meta { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.punto-nueva { font-size: 0.75rem; font-weight: 700; background: #FFF3CD; color: #664d03; padding: 0.1rem 0.6rem; border-radius: 999px; }
