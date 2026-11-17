@@ -1,12 +1,15 @@
 const db = require('../config/db');
 const { CABANA_VISIBLE } = require('../utils/cabanas');
+const { JOIN_PLAN, PLAN_EFECTIVO, PLAN_NIVEL } = require('../utils/planes');
 
 // Orden permitido (lista blanca: nunca se arma el ORDER BY con texto del usuario)
 const ORDENES = {
   precio_asc: 'c.precio_por_noche ASC',
   precio_desc: 'c.precio_por_noche DESC',
   valoracion: 'valoracion DESC',
-  recientes: 'c.created_at DESC'
+  recientes: 'c.created_at DESC',
+  // Primero Premium, después Plus y Free; dentro de cada plan, las mejor calificadas
+  recomendado: 'plan_nivel DESC, valoracion DESC, total_calificaciones DESC, c.created_at DESC'
 };
 
 const SELECT_CABANA = `
@@ -17,11 +20,14 @@ const SELECT_CABANA = `
          l.id AS localidad_id, l.nombre AS localidad,
          p.id AS provincia_id, p.nombre AS provincia,
          ROUND(COALESCE(AVG(cal.puntaje), 0), 1)::float AS valoracion,
-         COUNT(cal.id)::int AS total_calificaciones
+         COUNT(cal.id)::int AS total_calificaciones,
+         ${PLAN_EFECTIVO} AS plan,
+         ${PLAN_NIVEL} AS plan_nivel
   FROM cabana c
   JOIN localidad l ON c.localidad_id = l.id
   JOIN provincia p ON l.provincia_id = p.id
   LEFT JOIN calificacion cal ON cal.cabana_id = c.id
+  ${JOIN_PLAN}
 `;
 
 // Devuelve un mensaje de error, o null si los datos son válidos
@@ -88,17 +94,33 @@ const getCabanas = async (req, res) => {
   }
 
   let query = SELECT_CABANA + ' WHERE ' + condiciones.join(' AND ') +
-              ' GROUP BY c.id, l.id, p.id';
+              ' GROUP BY c.id, l.id, p.id, pa.plan';
 
   if (valoracion_min) {
     params.push(valoracion_min);
     query += ` HAVING COALESCE(AVG(cal.puntaje), 0) >= $${params.length}`;
   }
 
-  query += ' ORDER BY ' + (ORDENES[orden] || ORDENES.recientes);
+  query += ' ORDER BY ' + (ORDENES[orden] || ORDENES.recomendado);
 
   try {
     const result = await db.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// ---------- PÚBLICO: cabañas destacadas del inicio (solo Premium vigentes que cumplen los requisitos) ----------
+const getDestacadas = async (req, res) => {
+  try {
+    const result = await db.query(
+      SELECT_CABANA + ` WHERE ${CABANA_VISIBLE} GROUP BY c.id, l.id, p.id, pa.plan
+       HAVING ${PLAN_EFECTIVO} = 'premium'
+       ORDER BY valoracion DESC, total_calificaciones DESC, c.created_at DESC
+       LIMIT 6`
+    );
     res.json(result.rows);
   } catch (error) {
     console.error(error);
@@ -146,7 +168,7 @@ const getCabanaById = async (req, res) => {
 
   try {
     const result = await db.query(
-      SELECT_CABANA + ` WHERE c.id = $1 AND ${CABANA_VISIBLE} GROUP BY c.id, l.id, p.id`,
+      SELECT_CABANA + ` WHERE c.id = $1 AND ${CABANA_VISIBLE} GROUP BY c.id, l.id, p.id, pa.plan`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -281,4 +303,5 @@ const deleteCabana = async (req, res) => {
   }
 };
 
-module.exports = { getCabanas, getCabanasPanel, getCabanaById, createCabana, updateCabana, deleteCabana };
+module.exports = {
+  getDestacadas, getCabanas, getCabanasPanel, getCabanaById, createCabana, updateCabana, deleteCabana };

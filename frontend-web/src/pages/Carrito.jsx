@@ -4,6 +4,7 @@ import api, { mensajeError } from '../api/client';
 import SidebarIndice from '../components/SidebarIndice';
 import ItemCarrito from '../components/ItemCarrito';
 import { formatearPrecio } from '../utils/formato';
+import ResumenTotales from '../components/ResumenTotales';
 import { hoyArgentina } from '../utils/fechas';
 
 const ENLACES = [
@@ -15,14 +16,17 @@ const ENLACES = [
 const obtenerCarrito = async () => {
   try {
     const { data } = await api.get('/carrito');
-    return { cargando: false, items: data.items, total: data.total, error: '' };
+    return {
+      cargando: false, items: data.items, total: data.total, tarifa: data.tarifa_servicio,
+      pct: data.tarifa_servicio_pct, totalAPagar: data.total_a_pagar, error: ''
+    };
   } catch (err) {
-    return { cargando: false, items: [], total: 0, error: mensajeError(err) };
+    return { cargando: false, items: [], total: 0, tarifa: 0, pct: 0, totalAPagar: 0, error: mensajeError(err) };
   }
 };
 
 export default function Carrito() {
-  const [estado, setEstado] = useState({ cargando: true, items: [], total: 0, error: '' });
+  const [estado, setEstado] = useState({ cargando: true, items: [], total: 0, tarifa: 0, pct: 0, totalAPagar: 0, error: '' });
   const [quitando, setQuitando] = useState(null);
   const [errorQuitar, setErrorQuitar] = useState('');
 
@@ -55,7 +59,7 @@ export default function Carrito() {
     }
   };
 
-  const { cargando, items, total, error } = estado;
+  const { cargando, items, total, tarifa, pct, totalAPagar, error } = estado;
   const hoy = hoyArgentina();
   // Con una cabaña no disponible o con fechas pasadas no se puede pagar
   const hayProblemas = items.some((i) => !i.activa || i.fecha_checkin < hoy);
@@ -93,10 +97,7 @@ export default function Carrito() {
                 <span>{formatearPrecio(i.subtotal)}</span>
               </div>
             ))}
-            <div className="linea-resumen total">
-              <span>Total</span>
-              <strong>{formatearPrecio(total)}</strong>
-            </div>
+            <ResumenTotales subtotal={total} tarifa={tarifa} pct={pct} total={totalAPagar} />
 
             {hayProblemas && (
               <div className="mensaje-error">

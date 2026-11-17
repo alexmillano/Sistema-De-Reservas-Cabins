@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { hoy, estaOcupada, bloqueadaPorOtro, MINUTOS_BLOQUEO } = require('../utils/reservas');
 const { CABANA_VISIBLE } = require('../utils/cabanas');
+const { COMISION_PCT, TARIFA_SERVICIO_PCT, redondear, montoDe } = require('../utils/tarifas');
 
 const errorHttp = (status, message) => Object.assign(new Error(message), { status });
 
@@ -178,12 +179,23 @@ const pagar = async (req, res) => {
         [req.user.id, item.cabana_id, item.cantidad_personas, item.fecha_checkin, item.fecha_checkout]
       );
 
+      // Se guardan los porcentajes y los montos de esta reserva
+      const alojamiento = nueva.rows[0].precio_total;
+      const tarifa = montoDe(alojamiento, TARIFA_SERVICIO_PCT);
+      await client.query(
+        `UPDATE reserva
+         SET comision_pct = $2, comision_monto = $3, tarifa_servicio_pct = $4, tarifa_servicio_monto = $5
+         WHERE id = $1`,
+        [nueva.rows[0].id, COMISION_PCT, montoDe(alojamiento, COMISION_PCT), TARIFA_SERVICIO_PCT, tarifa]
+      );
+
       reservas.push({
         id: nueva.rows[0].id,
         cabana: cabana.nombre,
         fecha_checkin: item.fecha_checkin,
         fecha_checkout: item.fecha_checkout,
         precio_total: nueva.rows[0].precio_total,
+        tarifa_servicio: tarifa,
         estado: 'pendiente'
       });
 
@@ -206,7 +218,8 @@ const pagar = async (req, res) => {
       }
     }
 
-    const total = Math.round(reservas.reduce((acc, r) => acc + r.precio_total, 0) * 100) / 100;
+    const total = redondear(reservas.reduce((acc, r) => acc + r.precio_total, 0));
+    const tarifaServicio = redondear(reservas.reduce((acc, r) => acc + r.tarifa_servicio, 0));
 
     // Aviso de pago aprobado: uno por dueño, con el total de SUS cabañas en esta compra
     for (const [adminId, acumulado] of porDueno) {
@@ -229,6 +242,9 @@ const pagar = async (req, res) => {
     res.status(201).json({
       message: 'Pago simulado aprobado. Tus reservas quedaron registradas',
       total,
+      tarifa_servicio_pct: TARIFA_SERVICIO_PCT,
+      tarifa_servicio: tarifaServicio,
+      total_pagado: redondear(total + tarifaServicio),
       reservas
     });
   } catch (error) {
@@ -246,6 +262,7 @@ const getMisReservas = async (req, res) => {
               to_char(r.fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(r.fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout,
               r.precio_total::float AS precio_total,
+              r.tarifa_servicio_monto::float AS tarifa_servicio,
               c.id AS cabana_id, c.nombre AS cabana_nombre,
               c.descripcion, c.imagen_url,
               l.nombre AS localidad, p.nombre AS provincia

@@ -96,6 +96,15 @@ const modificarReserva = async (req, res) => {
       [fecha_checkin, fecha_checkout, personas, reserva.cabana_id, id]
     );
 
+    // Con el precio nuevo se recalculan la comisión y la tarifa, con los % que ya tenía la reserva
+    await client.query(
+      `UPDATE reserva
+       SET comision_monto = ROUND(precio_total * comision_pct / 100, 2),
+           tarifa_servicio_monto = ROUND(precio_total * tarifa_servicio_pct / 100, 2)
+       WHERE id = $1`,
+      [id]
+    );
+
     await client.query('COMMIT');
     res.json({
       message: 'Reserva modificada exitosamente',
@@ -210,6 +219,8 @@ const getReservasAdmin = async (req, res) => {
               to_char(r.fecha_checkin, 'YYYY-MM-DD')  AS fecha_checkin,
               to_char(r.fecha_checkout, 'YYYY-MM-DD') AS fecha_checkout,
               r.precio_total::float AS precio_total,
+              r.comision_monto::float AS comision_monto,
+              r.comision_pct::float AS comision_pct,
               u.id AS usuario_id, u.nombre AS usuario_nombre,
               u.apellido AS usuario_apellido, u.email AS usuario_email,
               c.id AS cabana_id, c.nombre AS cabana_nombre,

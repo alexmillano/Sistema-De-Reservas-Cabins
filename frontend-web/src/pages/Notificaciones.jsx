@@ -8,7 +8,8 @@ const TIPOS = {
   cancelacion: { texto: 'Cancelación', icono: '🗓️', destino: '/admin/reservas', accion: 'Ver reservas' },
   checkout: { texto: 'Check-out', icono: '🧳', destino: '/admin/reservas', accion: 'Ver reservas' },
   reclamo: { texto: 'Reclamo', icono: '⚠️', destino: '/admin/reclamos', accion: 'Ver reclamos' },
-  opinion: { texto: 'Opinión', icono: '⭐', destino: '/admin/opiniones', accion: 'Ver opiniones' }
+  opinion: { texto: 'Opinión', icono: '⭐', destino: '/admin/opiniones', accion: 'Ver opiniones' },
+  plan: { texto: 'Plan pausado', icono: '⏸️', destino: '/admin/planes', accion: 'Ver planes' }
 };
 
 const FILTROS = [

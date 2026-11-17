@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { avisarPlanPausado } = require('../utils/planes');
 const { paginar } = require('../utils/paginacion');
 
 const MAX_OPINION = 1000;
@@ -91,6 +92,9 @@ const crearCalificacion = async (req, res) => {
         ]
       );
     }
+
+    // Si el promedio bajó y el plan de la cabaña quedó pausado, se avisa al dueño
+    await avisarPlanPausado(client, cabanaId);
 
     await client.query('COMMIT');
     res.status(201).json({

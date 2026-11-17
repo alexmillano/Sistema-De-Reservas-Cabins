@@ -18,6 +18,8 @@ const getResumen = async (req, res) => {
       db.query(
         `SELECT
            COALESCE(SUM(r.precio_total) FILTER (WHERE r.estado IN ('confirmada', 'completada')), 0)::float AS ingresos_totales,
+           COALESCE(SUM(r.comision_monto) FILTER (WHERE r.estado IN ('confirmada', 'completada')), 0)::float AS comisiones_totales,
+           COALESCE(SUM(r.tarifa_servicio_monto) FILTER (WHERE r.estado IN ('confirmada', 'completada')), 0)::float AS tarifas_totales,
            COUNT(*) FILTER (WHERE r.estado = 'pendiente')::int  AS pendientes,
            COUNT(*) FILTER (WHERE r.estado = 'confirmada')::int AS confirmadas,
            COUNT(*) FILTER (WHERE r.estado = 'completada')::int AS completadas,
@@ -91,6 +93,10 @@ const getResumen = async (req, res) => {
       alcance: dueno === null ? 'todas' : 'propias',
       indicadores: {
         ingresos_totales: ingresosTotales,
+        comisiones_totales: redondear(e.comisiones_totales),
+        ingresos_netos: redondear(ingresosTotales - e.comisiones_totales),
+        tarifas_totales: redondear(e.tarifas_totales),
+        ingresos_plataforma: redondear(e.comisiones_totales + e.tarifas_totales),
         reservas_con_ingreso: reservasConIngreso,
         ingreso_promedio: reservasConIngreso > 0 ? redondear(ingresosTotales / reservasConIngreso) : 0,
         ocupacion_general_pct: ocupacionGeneral

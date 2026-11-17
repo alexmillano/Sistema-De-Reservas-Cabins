@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { esFechaValida, hoy, estaOcupada, bloqueadaPorOtro } = require('../utils/reservas');
 const { CABANA_VISIBLE } = require('../utils/cabanas');
+const { TARIFA_SERVICIO_PCT, redondear, montoDe } = require('../utils/tarifas');
 
 // Valida un ítem del carrito. Devuelve { status, error } si algo está mal
 // o { valores } con los datos ya limpios.
@@ -88,8 +89,16 @@ const getCarrito = async (req, res) => {
       [req.user.id]
     );
 
-    const total = result.rows.reduce((acc, item) => acc + item.subtotal, 0);
-    res.json({ items: result.rows, total: Math.round(total * 100) / 100 });
+    // La tarifa se calcula por reserva y se suma, igual que al pagar, para que los centavos coincidan
+    const total = redondear(result.rows.reduce((acc, item) => acc + item.subtotal, 0));
+    const tarifa = redondear(result.rows.reduce((acc, item) => acc + montoDe(item.subtotal, TARIFA_SERVICIO_PCT), 0));
+    res.json({
+      items: result.rows,
+      total,
+      tarifa_servicio_pct: TARIFA_SERVICIO_PCT,
+      tarifa_servicio: tarifa,
+      total_a_pagar: redondear(total + tarifa)
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error en el servidor' });

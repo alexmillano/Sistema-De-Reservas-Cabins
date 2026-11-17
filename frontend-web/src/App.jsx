@@ -22,6 +22,7 @@ import Calificaciones from './pages/Calificaciones';
 import Opiniones from './pages/Opiniones';
 import Administradores from './pages/Administradores';
 import Usuarios from './pages/Usuarios';
+import Planes from './pages/Planes';
 import Pendiente, { NoEncontrada } from './pages/Pendiente';
 
 export default function App() {
@@ -47,6 +48,7 @@ export default function App() {
             <Route element={<ProtectedRoute roles={['admin']} dueno />}>
               <Route path="admin/crear-cabana" element={<FormularioCabana />} />
               <Route path="admin/cabanas/:id/editar" element={<FormularioCabana />} />
+              <Route path="admin/planes" element={<Planes />} />
             </Route>
 
             <Route element={<ProtectedRoute roles={['admin']} />}>

@@ -49,7 +49,9 @@ function Modal({ titulo, onCerrar, children }) {
 function ModalModificar({ reserva, onCerrar, onListo }) {
   const hoy = hoyArgentina();
   const nochesActuales = contarNoches(reserva.fecha_checkin, reserva.fecha_checkout);
-  const precioNoche = nochesActuales > 0 ? reserva.precio_total / nochesActuales : 0;
+  // La estimación incluye la tarifa de servicio, con el mismo % que ya tiene la reserva
+  const factorTarifa = reserva.precio_total > 0 ? 1 + reserva.tarifa_servicio / reserva.precio_total : 1;
+  const precioNoche = nochesActuales > 0 ? (reserva.precio_total * factorTarifa) / nochesActuales : 0;
   const [form, setForm] = useState({
     fecha_checkin: reserva.fecha_checkin,
     fecha_checkout: reserva.fecha_checkout,
@@ -284,8 +286,13 @@ function TarjetaReserva({ reserva, puedeCalificar, onAccion }) {
           <div className="reserva-derecha">
             <span className={`estado estado-${reserva.estado}`}>{ETIQUETA_ESTADO[reserva.estado]}</span>
             <strong className={reserva.estado === 'cancelada' ? 'precio-tachado' : 'precio'}>
-              {formatearPrecio(reserva.precio_total)}
+              {formatearPrecio(reserva.precio_total + reserva.tarifa_servicio)}
             </strong>
+            {reserva.tarifa_servicio > 0 && (
+              <small className="texto-suave">
+                Alojamiento {formatearPrecio(reserva.precio_total)} + tarifa de servicio {formatearPrecio(reserva.tarifa_servicio)}
+              </small>
+            )}
           </div>
         </div>
 

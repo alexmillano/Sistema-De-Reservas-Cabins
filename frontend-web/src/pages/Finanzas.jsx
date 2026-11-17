@@ -68,10 +68,42 @@ export default function Finanzas() {
         <div className={cargando ? 'cargando-suave' : ''}>
           <div className="kpis">
             <div className="tarjeta kpi">
-              <span className="kpi-titulo">Ingresos totales</span>
+              <span className="kpi-titulo">{datos.alcance === 'todas' ? 'Alojamiento reservado' : 'Ingresos brutos'}</span>
               <strong className="kpi-valor">{formatearPrecio(datos.indicadores.ingresos_totales)}</strong>
               <span className="texto-suave">Reservas confirmadas y completadas</span>
             </div>
+            {datos.alcance === 'todas' ? (
+              <>
+                <div className="tarjeta kpi">
+                  <span className="kpi-titulo">Comisiones a dueños</span>
+                  <strong className="kpi-valor">{formatearPrecio(datos.indicadores.comisiones_totales)}</strong>
+                  <span className="texto-suave">10% del alojamiento</span>
+                </div>
+                <div className="tarjeta kpi">
+                  <span className="kpi-titulo">Tarifas de servicio</span>
+                  <strong className="kpi-valor">{formatearPrecio(datos.indicadores.tarifas_totales)}</strong>
+                  <span className="texto-suave">5% cobrado a huéspedes</span>
+                </div>
+                <div className="tarjeta kpi">
+                  <span className="kpi-titulo">Ingresos de la plataforma</span>
+                  <strong className="kpi-valor">{formatearPrecio(datos.indicadores.ingresos_plataforma)}</strong>
+                  <span className="texto-suave">Comisiones + tarifas</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="tarjeta kpi">
+                  <span className="kpi-titulo">Comisión de Cabins</span>
+                  <strong className="kpi-valor">-{formatearPrecio(datos.indicadores.comisiones_totales)}</strong>
+                  <span className="texto-suave">10% de cada reserva</span>
+                </div>
+                <div className="tarjeta kpi">
+                  <span className="kpi-titulo">Ingresos netos</span>
+                  <strong className="kpi-valor">{formatearPrecio(datos.indicadores.ingresos_netos)}</strong>
+                  <span className="texto-suave">Lo que recibís después de la comisión</span>
+                </div>
+              </>
+            )}
             <div className="tarjeta kpi">
               <span className="kpi-titulo">Promedio por reserva</span>
               <strong className="kpi-valor">{formatearPrecio(datos.indicadores.ingreso_promedio)}</strong>

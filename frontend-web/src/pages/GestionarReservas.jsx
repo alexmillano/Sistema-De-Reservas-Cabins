@@ -133,6 +133,11 @@ export default function GestionarReservas() {
             <div className="reserva-derecha">
               <span className={`estado estado-${r.estado}`}>{ETIQUETA[r.estado]}</span>
               <strong className={r.estado === 'cancelada' ? 'precio-tachado' : 'precio'}>{formatearPrecio(r.precio_total)}</strong>
+              {esDueno && r.comision_monto > 0 && r.estado !== 'cancelada' && (
+                <small className="texto-suave">
+                  Comisión Cabins ({r.comision_pct}%): -{formatearPrecio(r.comision_monto)} · Recibís {formatearPrecio(r.precio_total - r.comision_monto)}
+                </small>
+              )}
             </div>
           </div>
           <div className="item-datos">

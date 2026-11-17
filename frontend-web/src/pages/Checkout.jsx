@@ -1,3 +1,4 @@
+import ResumenTotales from '../components/ResumenTotales';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
@@ -63,7 +64,7 @@ function Pasos({ actual }) {
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const [carrito, setCarrito] = useState({ cargando: true, items: [], total: 0, error: '' });
+  const [carrito, setCarrito] = useState({ cargando: true, items: [], total: 0, tarifa: 0, pct: 0, totalAPagar: 0, error: '' });
   const [paso, setPaso] = useState('resumen');
   const [pago, setPago] = useState(PAGO_VACIO);
   const [error, setError] = useState('');
@@ -91,7 +92,10 @@ export default function Checkout() {
       try {
         const { data } = await api.get('/carrito');
         if (!activo) return;
-        setCarrito({ cargando: false, items: data.items, total: data.total, error: '' });
+        setCarrito({
+          cargando: false, items: data.items, total: data.total, tarifa: data.tarifa_servicio,
+          pct: data.tarifa_servicio_pct, totalAPagar: data.total_a_pagar, error: ''
+        });
 
         const hoy = hoyArgentina();
         const problemas = data.items.some((i) => !i.activa || i.fecha_checkin < hoy);
@@ -101,7 +105,7 @@ export default function Checkout() {
         }
         await bloquear();
       } catch (err) {
-        if (activo) setCarrito({ cargando: false, items: [], total: 0, error: mensajeError(err) });
+        if (activo) setCarrito({ cargando: false, items: [], total: 0, tarifa: 0, pct: 0, totalAPagar: 0, error: mensajeError(err) });
       }
     })();
     return () => { activo = false; };
@@ -196,10 +200,8 @@ export default function Checkout() {
               <span>{formatearPrecio(r.precio_total)}</span>
             </div>
           ))}
-          <div className="linea-resumen total">
-            <span>Total</span>
-            <strong>{formatearPrecio(confirmacion.total)}</strong>
-          </div>
+          <ResumenTotales subtotal={confirmacion.total} tarifa={confirmacion.tarifa_servicio}
+            pct={confirmacion.tarifa_servicio_pct} total={confirmacion.total_pagado} etiquetaTotal="Total pagado" />
 
           <div className="btn-fila">
             <Link to="/mis-reservas" className="btn">Ver mis reservas</Link>
@@ -287,10 +289,7 @@ export default function Checkout() {
               <span>{formatearPrecio(i.subtotal)}</span>
             </div>
           ))}
-          <div className="linea-resumen total">
-            <span>Total</span>
-            <strong>{formatearPrecio(carrito.total)}</strong>
-          </div>
+          <ResumenTotales subtotal={carrito.total} tarifa={carrito.tarifa} pct={carrito.pct} total={carrito.totalAPagar} />
 
           {hayProblemas && (
             <div className="mensaje-error">
@@ -368,7 +367,7 @@ export default function Checkout() {
               Volver al resumen
             </button>
             <button type="submit" className="btn" disabled={enviando || !puedeAvanzar}>
-              {enviando ? 'Procesando...' : `Confirmar pago ${formatearPrecio(carrito.total)}`}
+              {enviando ? 'Procesando...' : `Confirmar pago ${formatearPrecio(carrito.totalAPagar)}`}
             </button>
           </div>
         </form>

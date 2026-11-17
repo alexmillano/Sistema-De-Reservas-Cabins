@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { avisarPlanPausado } = require('../utils/planes');
 
 const ESTADOS = ['nuevo', 'en_proceso', 'finalizado'];
 const MAX_ASUNTO = 200;
@@ -110,6 +111,10 @@ const crearReclamo = async (req, res) => {
         [admin_id, `Nuevo reclamo de ${req.user.usuario} sobre ${cabana_nombre}: ${asunto}`.slice(0, 500), reserva_id]
       );
     }
+
+    // Un reclamo sin responder puede pausar un plan Premium: se avisa al dueño
+    const deReserva = await client.query('SELECT cabana_id FROM reserva WHERE id = $1', [reserva_id]);
+    if (deReserva.rows[0]) await avisarPlanPausado(client, deReserva.rows[0].cabana_id);
 
     await client.query('COMMIT');
     res.status(201).json({ message: 'Reclamo enviado', id: reclamoId });

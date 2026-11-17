@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import HeroBanner from '../components/HeroBanner';
+import CabanaCard from '../components/CabanaCard';
 
 const SERVICIOS = [
   { titulo: 'Catálogo con filtros', texto: 'Buscá por provincia, localidad, precio y valoración.' },
@@ -20,10 +21,17 @@ const PASOS = [
 export default function Inicio() {
   const { user } = useAuth();
   const [provincias, setProvincias] = useState([]);
+  const [destacadas, setDestacadas] = useState([]);
 
   useEffect(() => {
     api.get('/provincias')
       .then(({ data }) => setProvincias(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get('/cabanas/destacadas')
+      .then(({ data }) => setDestacadas(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -37,6 +45,15 @@ export default function Inicio() {
   return (
     <>
       <HeroBanner cta={cta} anclaSecundaria="como-alquilar" />
+
+      {destacadas.length > 0 && (
+        <section className="seccion">
+          <h2>Cabañas destacadas</h2>
+          <div className="lista-cabanas">
+            {destacadas.map((c) => <CabanaCard key={c.id} cabana={c} />)}
+          </div>
+        </section>
+      )}
 
       <section className="seccion">
         <h2>Quiénes somos</h2>

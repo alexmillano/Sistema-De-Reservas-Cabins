@@ -509,3 +509,21 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .login-lateral-der { right: 3rem; }
 @media (max-width: 900px) { .login-lateral { display: none; } }
 @media (max-width: 520px) { .login-tarjeta { padding: 1.75rem 1.25rem; } .login-titulo { font-size: 1.6rem; } }
+
+/* ---------- Planes ---------- */
+.planes-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+.plan h2 { margin: 0 0 0.25rem; }
+.plan-precio { font-size: 1.6rem; font-weight: 700; margin: 0.25rem 0 0.75rem; }
+.plan-precio small { font-size: 0.9rem; font-weight: 400; }
+.plan-plus { border-top: 5px solid #8a6d3b; }
+.plan-premium { border-top: 5px solid var(--dorado); background: #FFFBEF; }
+.plan-free { border-top: 5px solid var(--borde); }
+.mensaje-info { background: #EAF1F8; color: #1d3b57; border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.25rem; }
+.plan-cabana { margin-bottom: 0.9rem; }
+.plan-cabana-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.plan-cabana-cab h3 { margin: 0 0 0.2rem; }
+.plan-botones { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.plan-opcion { display: flex; flex-direction: column; gap: 0.3rem; max-width: 280px; }
+.insignia-plan { display: inline-block; align-self: flex-start; width: fit-content; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 999px; margin-bottom: 0.3rem; }
+.insignia-premium { background: var(--dorado); color: #fff; }
+.insignia-plus { background: #EADFC8; color: #5b4520; }

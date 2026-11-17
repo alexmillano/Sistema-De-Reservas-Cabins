@@ -8,6 +8,7 @@ const FILTROS_VACIOS = {
 };
 
 const ORDENES = [
+  { valor: 'recomendado', texto: 'Recomendadas' },
   { valor: 'recientes', texto: 'Más recientes' },
   { valor: 'precio_asc', texto: 'Menor precio' },
   { valor: 'precio_desc', texto: 'Mayor precio' },
@@ -26,7 +27,7 @@ const armarConsulta = (filtros, orden) => {
 export default function Reservas() {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [errorFiltro, setErrorFiltro] = useState('');
-  const [consulta, setConsulta] = useState({ orden: 'recientes' });
+  const [consulta, setConsulta] = useState({ orden: 'recomendado' });
   const [resultado, setResultado] = useState({ consulta: null, cabanas: [], error: '' });
 
   // Si llega una respuesta vieja después de una consulta nueva, se descarta

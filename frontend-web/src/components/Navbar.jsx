@@ -20,6 +20,7 @@ const MENU_ADMIN = [
   ] },
   { texto: 'Finanzas', hijos: [
     { texto: 'Ganancias', to: '/admin/finanzas' },
+    { texto: 'Planes', to: '/admin/planes' },
     { texto: 'Reclamos', to: '/admin/reclamos' }
   ] },
   { texto: 'Comunidad', hijos: [
@@ -129,7 +130,7 @@ export default function Navbar() {
 
   // El superadmin solo consulta: no ve "Crear Cabaña"
   const menuSuperadmin = MENU_ADMIN.map((item) =>
-    item.hijos ? { ...item, hijos: item.hijos.filter((h) => h.to !== '/admin/crear-cabana') } : item
+    item.hijos ? { ...item, hijos: item.hijos.filter((h) => h.to !== '/admin/crear-cabana' && h.to !== '/admin/planes') } : item
   );
   const items = user.rol === 'admin'
     ? (user.es_superadmin ? [...menuSuperadmin, MENU_SUPERADMIN] : MENU_ADMIN)

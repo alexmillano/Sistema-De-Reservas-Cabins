@@ -20,6 +20,9 @@ export default function CabanaCard({ cabana }) {
       )}
 
       <div className="cabana-info">
+        {(cabana.plan === 'premium' || cabana.plan === 'plus') && (
+          <span className={`insignia-plan insignia-${cabana.plan}`}>{cabana.plan === 'premium' ? '★ Destacada' : 'Plus'}</span>
+        )}
         <h3>{cabana.nombre}</h3>
         <p className="cabana-ubicacion">📍 {cabana.localidad}, {cabana.provincia}</p>
         <p className="cabana-descripcion">{cabana.descripcion}</p>
