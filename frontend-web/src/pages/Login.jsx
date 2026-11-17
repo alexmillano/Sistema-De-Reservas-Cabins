@@ -102,6 +102,9 @@ export default function Login() {
           </button>
         </div>
 
+        {location.state?.clave_cambiada && (
+          <div className="mensaje-exito">Contraseña actualizada. Ya podés iniciar sesión con la nueva.</div>
+        )}
         {location.state?.registrado && (
           <div className="mensaje-exito">Cuenta creada. Ya podés iniciar sesión.</div>
         )}

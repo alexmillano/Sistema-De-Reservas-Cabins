@@ -23,7 +23,9 @@ import Opiniones from './pages/Opiniones';
 import Administradores from './pages/Administradores';
 import Usuarios from './pages/Usuarios';
 import Planes from './pages/Planes';
-import Pendiente, { NoEncontrada } from './pages/Pendiente';
+import { NoEncontrada } from './pages/Pendiente';
+import RecuperarClave from './pages/RecuperarClave';
+import RestablecerClave from './pages/RestablecerClave';
 
 export default function App() {
   return (
@@ -34,7 +36,8 @@ export default function App() {
             <Route index element={<Inicio />} />
             <Route path="login" element={<Login />} />
             <Route path="registro" element={<Registro />} />
-            <Route path="recuperar-contrasena" element={<Pendiente titulo="Recuperar contraseña" />} />
+            <Route path="recuperar-contrasena" element={<RecuperarClave />} />
+            <Route path="restablecer-contrasena" element={<RestablecerClave />} />
 
             <Route element={<ProtectedRoute roles={['usuario']} />}>
               <Route path="reservas" element={<Reservas />} />
