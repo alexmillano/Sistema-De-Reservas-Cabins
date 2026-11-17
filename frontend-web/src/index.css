@@ -527,3 +527,22 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .insignia-plan { display: inline-block; align-self: flex-start; width: fit-content; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 999px; margin-bottom: 0.3rem; }
 .insignia-premium { background: var(--dorado); color: #fff; }
 .insignia-plus { background: #EADFC8; color: #5b4520; }
+
+/* ---------- Finanzas: montos con color ---------- */
+.monto-positivo { color: #1E7B34; font-weight: 700; }
+.monto-negativo { color: #B3261E; font-weight: 700; }
+.monto-neutro { color: var(--texto); font-weight: 700; }
+.kpi-grande { border: 2px solid var(--borde); }
+.kpi-grande .kpi-valor { font-size: 2rem; }
+.flujo { margin-top: 0.75rem; }
+.flujo-linea { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--borde); }
+.flujo-linea small { color: #6a5d52; }
+.flujo-total { border-bottom: 0; border-top: 2px solid var(--texto); font-size: 1.15rem; }
+.tabla-scroll { overflow-x: auto; margin-top: 0.75rem; }
+.tabla-datos { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.tabla-datos th, .tabla-datos td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--borde); text-align: left; white-space: nowrap; }
+.tabla-datos th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: #6a5d52; }
+.tabla-datos .der { text-align: right; }
+.fila-cancelada td { color: #8a7d72; }
+.fila-cancelada td:nth-child(7), .fila-cancelada td:nth-child(10) { text-decoration: line-through; }
+.chips + .tabla-scroll { margin-top: 1rem; }
