@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { formatearPrecio } from '../utils/formato';
+import SubirImagen from '../components/SubirImagen';
 
 const MEDIOS_PAGO = ['Efectivo', 'Tarjeta', 'MercadoPago'];
 const MAX_DESCRIPCION = 1000;
@@ -182,9 +183,9 @@ export default function FormularioCabana() {
           </div>
         </div>
         <div className="campo">
-          <label htmlFor="c-img">Imagen de portada (enlace, opcional)</label>
-          <input id="c-img" name="imagen_url" type="url" maxLength={500} placeholder="https://..."
-            value={form.imagen_url} onChange={cambiar} />
+          <label>Imagen de portada (opcional)</label>
+          <SubirImagen valor={form.imagen_url}
+            onCambio={(url) => { setImagenRota(false); setForm((f) => ({ ...f, imagen_url: url })); }} />
         </div>
 
         <fieldset className="medios-pago">

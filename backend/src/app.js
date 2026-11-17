@@ -16,6 +16,7 @@ const adminRoutes = require('./routes/admin.routes');
 const perfilRoutes = require('./routes/perfil.routes');
 const usuarioRoutes = require('./routes/usuario.routes');
 const planRoutes = require('./routes/plan.routes');
+const imagenRoutes = require('./routes/imagen.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/admins', adminRoutes);
 app.use('/api/perfil', perfilRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/planes', planRoutes);
+app.use('/api/imagenes', imagenRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, (error) => {

@@ -23,7 +23,13 @@ const MENSAJE_FORMATO = 'La respuesta del servidor no es la esperada. Revisá qu
 const obtener = async (anio) => {
   try {
     const { data } = await api.get('/finanzas/resumen', { params: { anio } });
-    if (!data?.indicadores || !Array.isArray(data.ingresos_por_mes)) throw new Error('formato');
+    // Se revisa que venga todo lo que cada rol necesita: así un servidor desactualizado no rompe la pantalla
+    const base = data?.indicadores && data.estados && Array.isArray(data.ingresos_por_mes) && Array.isArray(data.ocupacion_por_cabana);
+    const completo = data?.alcance === 'todas'
+      ? Array.isArray(data.planes_detalle) && Array.isArray(data.resumen_planes) && Array.isArray(data.por_dueno)
+        && typeof data.indicadores.ingresos_plataforma === 'number'
+      : Array.isArray(data?.planes_por_cabana) && typeof data?.indicadores?.resultado_neto === 'number';
+    if (!base || !completo) throw new Error('formato');
     return { cargando: false, error: '', datos: data };
   } catch (err) {
     return { cargando: false, datos: null, error: err.message === 'formato' ? MENSAJE_FORMATO : mensajeError(err) };

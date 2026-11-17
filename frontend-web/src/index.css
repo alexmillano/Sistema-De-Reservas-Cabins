@@ -546,3 +546,15 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .fila-cancelada td { color: #8a7d72; }
 .fila-cancelada td:nth-child(7), .fila-cancelada td:nth-child(10) { text-decoration: line-through; }
 .chips + .tabla-scroll { margin-top: 1rem; }
+
+/* Subida de imagen arrastrando */
+.subir-imagen { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+.subir-zona {
+  width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.2rem;
+  align-items: center; text-align: center; padding: 1.4rem 1rem; cursor: pointer;
+  border: 2px dashed var(--principal); border-radius: 10px; background: #f7faf8; font-size: 0.9rem;
+}
+.subir-zona.arrastrando { background: #e3f1e7; border-style: solid; }
+.subir-zona.subiendo { opacity: 0.6; cursor: progress; }
+.subir-zona span { color: #555; font-size: 0.85rem; }
+.btn-enlace { background: none; border: none; padding: 0; color: var(--principal); text-decoration: underline; cursor: pointer; font-size: 0.85rem; }
