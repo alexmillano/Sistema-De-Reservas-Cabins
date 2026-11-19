@@ -68,3 +68,24 @@ const estilos = StyleSheet.create({
   aviso: { padding: 12, borderRadius: 10, marginBottom: 14 },
   enlace: { color: colores.primario, fontWeight: '600', textAlign: 'center', paddingVertical: 8 }
 });
+
+export function Stepper({ valor, min = 1, max = 99, onChange }) {
+  return (
+    <View style={estilosStepper.fila}>
+      <Pressable onPress={() => valor > min && onChange(valor - 1)} style={[estilosStepper.boton, valor <= min && { opacity: 0.4 }]} hitSlop={6}>
+        <Text style={estilosStepper.simbolo}>−</Text>
+      </Pressable>
+      <Text style={estilosStepper.valor}>{valor}</Text>
+      <Pressable onPress={() => valor < max && onChange(valor + 1)} style={[estilosStepper.boton, valor >= max && { opacity: 0.4 }]} hitSlop={6}>
+        <Text style={estilosStepper.simbolo}>+</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const estilosStepper = StyleSheet.create({
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  boton: { width: 36, height: 36, borderRadius: 18, backgroundColor: colores.chip, alignItems: 'center', justifyContent: 'center' },
+  simbolo: { fontSize: 20, color: colores.primario, fontWeight: '700', lineHeight: 22 },
+  valor: { minWidth: 22, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colores.texto }
+});

@@ -12,6 +12,8 @@ import Inicio from './screens/Inicio';
 import Catalogo from './screens/Catalogo';
 import DetalleCabana from './screens/DetalleCabana';
 import Perfil from './screens/Perfil';
+import Carrito from './screens/Carrito';
+import Checkout from './screens/Checkout';
 import Proximamente from './screens/Proximamente';
 import { colores } from './theme/colores';
 
@@ -36,7 +38,7 @@ function Principal() {
       <Tabs.Screen name="Inicio" component={Inicio} />
       <Tabs.Screen name="Catalogo" component={Catalogo} />
       <Tabs.Screen name="Reservas" component={Proximamente} />
-      <Tabs.Screen name="Carrito" component={Proximamente} />
+      <Tabs.Screen name="Carrito" component={Carrito} />
       <Tabs.Screen name="Soporte" component={Proximamente} />
       <Tabs.Screen name="Perfil" component={Perfil} />
     </Tabs.Navigator>
@@ -59,6 +61,8 @@ function Rutas() {
       {user ? (
         <>
           <Stack.Screen name="Principal" component={Principal} options={{ headerShown: false }} />
+          <Stack.Screen name="Checkout" component={Checkout}
+            options={{ title: 'Pago', headerStyle: { backgroundColor: colores.nav }, headerTintColor: '#fff' }} />
           <Stack.Screen name="DetalleCabana" component={DetalleCabana}
             options={{ title: 'Cabaña', headerStyle: { backgroundColor: colores.nav }, headerTintColor: '#fff' }} />
         </>

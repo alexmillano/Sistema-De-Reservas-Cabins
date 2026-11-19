@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
-import { Aviso, Boton } from '../components/Ui';
+import { Aviso } from '../components/Ui';
+import CajaReserva from '../components/CajaReserva';
 import { colores } from '../theme/colores';
-import { estrellas, formatearFecha, formatearPrecio } from '../utils/formato';
+import { estrellas, formatearFecha } from '../utils/formato';
 
 const POR_PAGINA = 5;
 
@@ -79,10 +80,7 @@ export default function DetalleCabana({ route, navigation }) {
         </Text>
         <Text style={estilos.linea}>👥 Hasta {cabana.capacidad_personas} personas</Text>
 
-        <View style={estilos.cajaPrecio}>
-          <Text style={estilos.precio}>{formatearPrecio(cabana.precio_por_noche)} <Text style={estilos.noche}>/ noche</Text></Text>
-          <Boton titulo="Reservar (próximo lote)" onPress={() => {}} deshabilitado />
-        </View>
+        <CajaReserva cabana={cabana} onVerCarrito={() => navigation.navigate('Principal', { screen: 'Carrito' })} />
 
         <Text style={estilos.seccion}>Descripción</Text>
         <Text style={estilos.texto}>{cabana.descripcion}</Text>
@@ -121,9 +119,6 @@ const estilos = StyleSheet.create({
   titulo: { fontSize: 26, fontWeight: '800', color: colores.texto },
   ubicacion: { color: colores.nav, marginTop: 4, fontWeight: '600' },
   linea: { color: colores.textoSuave, marginTop: 6 },
-  cajaPrecio: { backgroundColor: colores.tarjeta, borderRadius: 14, borderWidth: 1, borderColor: colores.borde, padding: 14, marginTop: 16 },
-  precio: { fontSize: 26, fontWeight: '800', color: colores.texto },
-  noche: { fontSize: 14, fontWeight: '400', color: colores.textoSuave },
   seccion: { fontSize: 19, fontWeight: '800', color: colores.primario, marginTop: 20, marginBottom: 8 },
   texto: { color: colores.texto, lineHeight: 21 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
