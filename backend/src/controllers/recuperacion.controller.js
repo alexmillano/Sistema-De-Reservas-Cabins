@@ -6,10 +6,11 @@ const { enviarCorreo, correoConfigurado, plantillaRecuperacion } = require('../u
 const VIDA_TOKEN_MIN = 60;
 const MAX_PEDIDOS_POR_HORA = 3;
 const hashear = (token) => crypto.createHash('sha256').update(token).digest('hex');
-const RESPUESTA = { message: 'Si el email está registrado, te enviamos un enlace para restablecer tu contraseña. Revisá también la carpeta de spam.' };
+const RESPUESTA = { message: 'Te enviamos un enlace para restablecer tu contraseña. Revisá también la carpeta de spam.' };
 
 // POST /api/auth/olvide-clave   { email }
-// Siempre responde lo mismo, exista o no el email, para no revelar quién está registrado.
+// Si el email no está registrado avisa (CU-03); si la cuenta está suspendida o hubo
+// demasiados pedidos, también lo informa.
 const olvideClave = async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email || email.length > 150 || !email.includes('@')) {
@@ -27,14 +28,22 @@ const olvideClave = async (req, res) => {
       r.rows.forEach((c) => cuentas.push({ ...c, rol }));
     }
 
-    for (const c of cuentas) {
-      if (c.baneado) continue; // cuenta suspendida: no se recupera por mail
+    if (cuentas.length === 0) {
+      return res.status(404).json({ message: 'Ese correo no está registrado' });
+    }
+    const activas = cuentas.filter((c) => !c.baneado);
+    if (activas.length === 0) {
+      return res.status(403).json({ message: 'Tu usuario se encuentra inactivo, contactate para solucionar' });
+    }
+
+    let limitadas = 0;
+    for (const c of activas) {
       const pedidos = await db.query(
         `SELECT COUNT(*)::int AS n FROM recuperacion_clave
           WHERE rol = $1 AND cuenta_id = $2 AND created_at > NOW() - INTERVAL '1 hour'`,
         [c.rol, c.id]
       );
-      if (pedidos.rows[0].n >= MAX_PEDIDOS_POR_HORA) continue; // freno anti-abuso
+      if (pedidos.rows[0].n >= MAX_PEDIDOS_POR_HORA) { limitadas++; continue; } // freno anti-abuso
 
       const token = crypto.randomBytes(32).toString('hex');
       await db.query(
@@ -49,6 +58,9 @@ const olvideClave = async (req, res) => {
       } catch (err) {
         console.error('No se pudo enviar el mail de recuperación:', err.message);
       }
+    }
+    if (limitadas === activas.length) {
+      return res.status(429).json({ message: 'Ya pediste varios enlaces en la última hora. Esperá un rato antes de pedir otro.' });
     }
     res.json(RESPUESTA);
   } catch (error) {
