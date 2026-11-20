@@ -14,7 +14,9 @@ import DetalleCabana from './screens/DetalleCabana';
 import Perfil from './screens/Perfil';
 import Carrito from './screens/Carrito';
 import Checkout from './screens/Checkout';
-import Proximamente from './screens/Proximamente';
+import MisReservas from './screens/MisReservas';
+import Soporte from './screens/Soporte';
+import ChatReclamo from './screens/ChatReclamo';
 import { colores } from './theme/colores';
 
 const Stack = createNativeStackNavigator();
@@ -37,9 +39,9 @@ function Principal() {
     >
       <Tabs.Screen name="Inicio" component={Inicio} />
       <Tabs.Screen name="Catalogo" component={Catalogo} />
-      <Tabs.Screen name="Reservas" component={Proximamente} />
+      <Tabs.Screen name="Reservas" component={MisReservas} />
       <Tabs.Screen name="Carrito" component={Carrito} />
-      <Tabs.Screen name="Soporte" component={Proximamente} />
+      <Tabs.Screen name="Soporte" component={Soporte} />
       <Tabs.Screen name="Perfil" component={Perfil} />
     </Tabs.Navigator>
   );
@@ -61,6 +63,8 @@ function Rutas() {
       {user ? (
         <>
           <Stack.Screen name="Principal" component={Principal} options={{ headerShown: false }} />
+          <Stack.Screen name="ChatReclamo" component={ChatReclamo}
+            options={({ route }) => ({ title: route.params?.asunto || 'Reclamo', headerStyle: { backgroundColor: colores.nav }, headerTintColor: '#fff' })} />
           <Stack.Screen name="Checkout" component={Checkout}
             options={{ title: 'Pago', headerStyle: { backgroundColor: colores.nav }, headerTintColor: '#fff' }} />
           <Stack.Screen name="DetalleCabana" component={DetalleCabana}

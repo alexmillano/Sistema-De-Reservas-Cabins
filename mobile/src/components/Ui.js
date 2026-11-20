@@ -1,15 +1,15 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colores } from '../theme/colores';
 
-export function Campo({ etiqueta, ...props }) {
+export function Campo({ etiqueta, style, ...props }) {
   return (
     <View style={estilos.campo}>
       <Text style={estilos.etiqueta}>{etiqueta}</Text>
       <TextInput
-        style={estilos.input}
         placeholderTextColor={colores.textoSuave}
         autoCapitalize="none"
         {...props}
+        style={[estilos.input, style]}
       />
     </View>
   );

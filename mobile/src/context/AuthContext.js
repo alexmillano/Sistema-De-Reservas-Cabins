@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import api, { borrarSesion, guardarSesion, leerSesion, registrarSesionInvalida } from '../api/client';
+import api, { borrarSesion, guardarSesion, guardarUsuario, leerSesion, registrarSesionInvalida } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -31,9 +31,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Después de editar el perfil: actualiza los datos guardados de la sesión
+  const actualizarUsuario = useCallback(async (cambios) => {
+    setUser((actual) => {
+      const nuevo = { ...actual, ...cambios };
+      guardarUsuario(nuevo).catch(() => {});
+      return nuevo;
+    });
+  }, []);
+
   const valor = useMemo(
-    () => ({ user, cargando, aviso, setAviso, login, logout }),
-    [user, cargando, aviso, login, logout]
+    () => ({ user, cargando, aviso, setAviso, login, logout, actualizarUsuario }),
+    [user, cargando, aviso, login, logout, actualizarUsuario]
   );
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
 }

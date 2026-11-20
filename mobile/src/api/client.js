@@ -15,6 +15,10 @@ export const guardarSesion = async (token, user) => {
   await SecureStore.setItemAsync(CLAVE_USUARIO, JSON.stringify(user));
 };
 
+export const guardarUsuario = async (user) => {
+  await SecureStore.setItemAsync(CLAVE_USUARIO, JSON.stringify(user));
+};
+
 export const leerSesion = async () => {
   const token = await SecureStore.getItemAsync(CLAVE_TOKEN);
   const user = await SecureStore.getItemAsync(CLAVE_USUARIO);
