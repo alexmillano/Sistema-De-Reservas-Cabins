@@ -1,97 +1,112 @@
-# Sistema-De-Reservas-Cabins
+# 🏡 Cabins — Sistema de Reservas de Cabañas
 
-## 📋 Tabla de Contenidos
+Plataforma para reservar cabañas en toda la Argentina. Los **huéspedes** buscan, reservan y pagan (pago simulado); los **dueños** publican y gestionan sus cabañas; el **superadmin** administra las cuentas y consulta las finanzas de la plataforma. Incluye aplicación web y aplicación móvil que consumen el mismo backend.
 
-- Características
-- Arquitectura
-- Roles del sistema
-- Tecnologías
-- Estructura del proyecto
-- Instalación y uso
-- Variables de entorno
-- Vistas del sistema
-- Sistema de reclamos con chat
-- Endpoints de la API
-- Base de datos
+Proyecto de tesis — Analista de Sistemas, Universidad Da Vinci. Autor: **Alexander Millano**.
+
+## 📋 Tabla de contenidos
+
+- [Características](#-características)
+- [Roles](#-roles)
+- [Arquitectura](#-arquitectura)
+- [Tecnologías](#-tecnologías)
+- [Modelo de ingresos](#-modelo-de-ingresos)
+- [Estructura del proyecto](#-estructura-del-proyecto)
+- [Instalación local](#-instalación-local)
+- [Variables de entorno](#-variables-de-entorno)
+- [Despliegue](#-despliegue)
+- [API](#-api)
+- [Base de datos](#-base-de-datos)
+- [Seguridad](#-seguridad)
+- [Documentación y pruebas](#-documentación-y-pruebas)
 
 ---
 
 ## ✨ Características
 
-### Usuario (Web y Móvil)
-- ✅ Registro y login con autenticación JWT
-- ✅ Exploración de cabañas con filtros (localidad, precio, valoración) y ordenamiento
-- ✅ Carrito de reservas — posibilidad de agregar múltiples cabañas
-- ✅ Flujo de reserva completo: selección → fechas → personas → pago simulado → confirmación
-- ✅ Gestión de reservas propias: ver, modificar y cancelar
-- ✅ Sistema de reclamos con chat estilo WhatsApp (Nuevo / En proceso / Finalizado)
-- ✅ Calificaciones y opiniones sobre cabañas reservadas
-- ✅ Gestión de perfil personal
+### Huésped (web y móvil)
+- Registro, inicio de sesión y **recuperación de contraseña por correo**.
+- Catálogo con filtros (provincia, localidad, precio, valoración) y orden.
+- Cabañas destacadas en el inicio (plan Premium).
+- Carrito con varias cabañas, **pago simulado en tres pasos** y bloqueo de fechas de 15 minutos mientras se paga.
+- Mis reservas: ver, modificar y cancelar.
+- Calificaciones y opiniones de estadías completadas.
+- Reclamos con chat entre huésped y dueño.
+- Perfil y cambio de contraseña.
 
-### Administrador (Web y Móvil)
-- ✅ Creación y edición de cabañas con previsualización en tiempo real
-- ✅ Gestión de todas las reservas del sistema
-- ✅ Panel de finanzas con gráficos de ingresos, ocupación y cancelaciones
-- ✅ Gestión de reclamos mediante chat con usuarios
-- ✅ Visualización de calificaciones y opiniones
-- ✅ Sistema de notificaciones en tiempo real (campanita)
-- ✅ Acceso protegido — los admins son creados únicamente por el superadmin
+### Dueño de cabañas (administrador)
+- Alta y edición de cabañas, con **subida de la foto de portada** (JPG, PNG o WEBP de hasta 5 MB) o enlace.
+- Gestión de las reservas de sus cabañas y cambio de estado.
+- **Planes de visibilidad** Free, Plus y Premium con contratación y renovación simuladas.
+- Finanzas con gráficos (ingresos netos, ocupación, cancelaciones), calificaciones, opiniones y notificaciones.
+- Chat de reclamos con los huéspedes.
+
+### Superadmin (solo consulta)
+- Crea, edita, suspende, reactiva y elimina cuentas de administradores y usuarios.
+- Finanzas de la plataforma: cobrado a huéspedes, pagos a dueños, tarifas, comisiones, planes vendidos e ingreso total, con detalle por reserva, por dueño y por mes.
+- Solo consulta: no crea cabañas ni responde reclamos.
+
+---
+
+## 👥 Roles
+
+| Rol | Descripción | Acceso |
+|-----|-------------|--------|
+| Invitado | Sin sesión | Inicio, catálogo y detalle de cabañas |
+| Usuario (huésped) | Cliente registrado | Carrito, reservas, reclamos, calificaciones y perfil |
+| Administrador (dueño) | Dueño de cabañas, creado por el superadmin | Gestión de sus cabañas, reservas, planes y finanzas |
+| Superadmin | Cuenta maestra de solo consulta | Gestión de cuentas y finanzas de la plataforma |
 
 ---
 
 ## 🏗️ Arquitectura
 
-Un único backend sirve tanto a la plataforma web como a la app móvil:
+Un único backend sirve a la web y a la app móvil.
 
 ```
-                ┌─────────────────────┐
-                │      BACKEND        │
-                │  Node.js + Express  │
-                │      (Render)       │
-                └──────────┬──────────┘
-                           │  API REST
-           ┌───────────────┴───────────────┐
-           │                               │
-┌──────────┴─────────┐       ┌─────────────┴──────────┐
-│   Frontend Web     │       │    Frontend Móvil       │
-│   React (Vercel)   │       │  React Native (Expo)    │
-└────────────────────┘       └────────────────────────┘
-                ┌─────────────────────┐
-                │    Base de Datos    │
-                │ Supabase (PostgreSQL)│
-                └─────────────────────┘
+┌──────────────────┐        ┌──────────────────────┐
+│  Web (React)     │        │  App móvil           │
+│  Vercel          │        │  React Native + Expo │
+└────────┬─────────┘        └──────────┬───────────┘
+         │            API REST (JSON)  │
+         └──────────────┬──────────────┘
+                ┌───────┴────────┐
+                │ Backend        │──► Brevo (correo de recuperación)
+                │ Node + Express │
+                │ Render         │──► Supabase Storage (imágenes)
+                └───────┬────────┘
+                ┌───────┴────────┐
+                │ Supabase       │
+                │ PostgreSQL     │
+                └────────────────┘
 ```
-
----
-
-## 👥 Roles del Sistema
-
-| Rol | Descripción | Plataformas |
-|-----|-------------|-------------|
-| Invitado | Usuario no autenticado | Web y móvil — solo inicio |
-| Usuario | Cliente registrado | Web y móvil — acceso completo |
-| Administrador | Empleado de Cabins | Web y móvil — panel admin |
-| Superadmin | Admin maestro | Creación de otros admins desde BD |
 
 ---
 
 ## 🛠 Tecnologías
 
-| Capa | Tecnología | Uso |
-|------|------------|-----|
-| Runtime | Node.js 18+ | Entorno de ejecución |
-| Framework backend | Express.js 4.x | Framework HTTP |
-| Base de datos | Supabase (PostgreSQL) | BD relacional en la nube |
-| Autenticación | JWT | Tokens de sesión por rol |
-| Encriptación | bcrypt | Hash de contraseñas |
-| Frontend web | React 18.x | Interfaz de usuario web |
-| Frontend móvil | React Native + Expo Go | App nativa Android |
-| APK Android | Expo Build | Archivo de instalación Android |
-| Gráficos | Recharts | Panel de finanzas |
-| Cliente HTTP | Axios | Consumo de la API REST |
-| Deploy backend | Render | Servidor Node.js en la nube |
-| Deploy frontend | Vercel | App React en la nube |
-| Control de versiones | Git + GitHub | Versionado del código |
+| Capa | Tecnología |
+|------|------------|
+| Backend | Node.js 18+, Express 5, `pg`, jsonwebtoken, bcrypt, multer, dotenv, cors |
+| Base de datos | PostgreSQL en Supabase (sesión por pooler), RLS activado en las 15 tablas |
+| Almacenamiento | Supabase Storage (bucket `Cabanas`) |
+| Correo | Brevo (correo transaccional) |
+| Web | React 19, Vite, React Router 6, Axios |
+| Móvil | React Native con Expo (SDK 58), React Navigation 7, expo-secure-store, Axios |
+| Despliegue | Render (backend), Vercel (web), Expo Go (móvil) |
+
+---
+
+## 💰 Modelo de ingresos
+
+| Concepto | Quién lo paga | Valor |
+|----------|---------------|-------|
+| Tarifa de servicio | Huésped | 5% del alojamiento, sumada al total |
+| Comisión | Dueño | 10% del alojamiento (el dueño recibe el 90%) |
+| Plan Plus | Dueño | $15.000 por 30 días |
+| Plan Premium | Dueño | $30.000 por 30 días (aparece en destacadas) |
+
+Los montos se guardan con dos decimales y se redondean al centavo. Los pagos y la contratación de planes son **simulados**: no se procesan tarjetas reales ni se guardan sus datos.
 
 ---
 
@@ -100,387 +115,177 @@ Un único backend sirve tanto a la plataforma web como a la app móvil:
 ```
 cabins/
 ├── backend/
+│   ├── database/
+│   │   ├── schema.sql              → esquema completo (15 tablas, RLS)
+│   │   └── datos_iniciales.sql     → provincias y localidades de Argentina
+│   ├── migraciones/                → cambios para bases creadas con versiones anteriores
 │   ├── src/
-│   │   ├── controllers/
-│   │   │   ├── auth.controller.js
-│   │   │   ├── cabana.controller.js
-│   │   │   ├── reserva.controller.js
-│   │   │   ├── reclamo.controller.js
-│   │   │   ├── finanzas.controller.js
-│   │   │   ├── calificacion.controller.js
-│   │   │   ├── opinion.controller.js
-│   │   │   └── notificacion.controller.js
-│   │   ├── middlewares/
-│   │   │   ├── auth.middleware.js      → Validación JWT
-│   │   │   └── role.middleware.js      → Control de roles
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js
-│   │   │   ├── cabana.routes.js
-│   │   │   ├── reserva.routes.js
-│   │   │   ├── reclamo.routes.js
-│   │   │   ├── finanzas.routes.js
-│   │   │   ├── calificacion.routes.js
-│   │   │   ├── opinion.routes.js
-│   │   │   └── notificacion.routes.js
-│   │   ├── config/
-│   │   │   └── db.js                  → Conexión a Supabase
-│   │   └── app.js                     → Entry point
-│   ├── .env.example
-│   └── package.json
-├── frontend-web/                       → React (Vercel)
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navbar/
-│   │   │   │   ├── NavUsuario.jsx
-│   │   │   │   └── NavAdmin.jsx
-│   │   │   ├── Sidebar/
-│   │   │   │   ├── SidebarFiltros.jsx
-│   │   │   │   └── SidebarIndice.jsx
-│   │   │   ├── CabanaCard.jsx
-│   │   │   ├── CarritoItem.jsx
-│   │   │   ├── ChatReclamo.jsx
-│   │   │   └── Notificaciones.jsx
-│   │   ├── pages/
-│   │   │   ├── Inicio.jsx
-│   │   │   ├── Login.jsx
-│   │   │   ├── Registro.jsx
-│   │   │   ├── usuario/
-│   │   │   │   ├── Reservas.jsx
-│   │   │   │   ├── MisReservas.jsx
-│   │   │   │   ├── Carrito.jsx
-│   │   │   │   ├── Checkout.jsx
-│   │   │   │   ├── Reclamos.jsx
-│   │   │   │   ├── Ayuda.jsx
-│   │   │   │   └── Perfil.jsx
-│   │   │   └── admin/
-│   │   │       ├── CrearCabana.jsx
-│   │   │       ├── GestionarReservas.jsx
-│   │   │       ├── Finanzas.jsx
-│   │   │       ├── Reclamos.jsx
-│   │   │       ├── Calificaciones.jsx
-│   │   │       ├── Opiniones.jsx
-│   │   │       └── PerfilAdmin.jsx
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx
-│   │   └── App.jsx
-│   └── package.json
-└── frontend-mobile/                    → React Native (Expo)
-    ├── src/
-    │   ├── screens/
-    │   │   ├── usuario/
-    │   │   │   ├── InicioScreen.jsx
-    │   │   │   ├── LoginScreen.jsx
-    │   │   │   ├── RegistroScreen.jsx
-    │   │   │   ├── ReservasScreen.jsx
-    │   │   │   ├── MisReservasScreen.jsx
-    │   │   │   ├── CarritoScreen.jsx
-    │   │   │   ├── CheckoutScreen.jsx
-    │   │   │   ├── ReclamosScreen.jsx
-    │   │   │   ├── ChatReclamoScreen.jsx
-    │   │   │   ├── AyudaScreen.jsx
-    │   │   │   └── PerfilScreen.jsx
-    │   │   └── admin/
-    │   │       ├── LoginAdminScreen.jsx
-    │   │       ├── DashboardScreen.jsx
-    │   │       ├── CabanasScreen.jsx
-    │   │       ├── ReservasAdminScreen.jsx
-    │   │       ├── FinanzasScreen.jsx
-    │   │       ├── ReclamosAdminScreen.jsx
-    │   │       ├── ChatAdminScreen.jsx
-    │   │       ├── CalificacionesScreen.jsx
-    │   │       ├── OpinionesScreen.jsx
-    │   │       └── PerfilAdminScreen.jsx
-    │   ├── navigation/
-    │   │   ├── UsuarioNavigator.jsx
-    │   │   └── AdminNavigator.jsx
-    │   └── context/
-    │       └── AuthContext.jsx
-    ├── app.json
-    └── package.json
+│   │   ├── app.js                  → punto de entrada
+│   │   ├── config/                 → db.js y seed.js (crea el superadmin)
+│   │   ├── controllers/            → lógica de cada módulo
+│   │   ├── middlewares/            → autenticación y roles
+│   │   ├── routes/                 → rutas de la API
+│   │   └── utils/                  → tarifas, planes, reservas, correo, imágenes
+│   └── .env.example
+├── frontend-web/                   → React + Vite (pages, components, context, api)
+├── mobile/                         → React Native + Expo (screens, components, theme)
+└── herramientas/
+    └── api.ps1                     → atajos de PowerShell para probar la API
 ```
 
 ---
 
-## 🚀 Instalación y uso
+## 🚀 Instalación local
 
-### Pre-requisitos
+### Requisitos
+- Node.js 18 o superior
+- Cuenta en [Supabase](https://supabase.com) (base de datos y almacenamiento)
+- Cuenta en [Brevo](https://www.brevo.com) para el correo de recuperación (opcional en desarrollo)
+- Expo Go en el teléfono para la app móvil
 
-- Node.js 18+
-- Cuenta en [Supabase](https://supabase.com)
-- Cuenta en [Render](https://render.com) (deploy backend)
-- Cuenta en [Vercel](https://vercel.com) (deploy frontend web)
-- Expo Go instalado en tu dispositivo Android (app móvil)
-
-### 1. Clonar el repositorio
-
+### 1. Clonar
 ```bash
-git clone https://github.com/Alexmillano/cabins.git
+git clone <URL-del-repositorio>
 cd cabins
 ```
 
-### 2. Configurar el backend
+### 2. Base de datos
+En el **SQL Editor** de Supabase, ejecutá en este orden:
+1. `backend/database/schema.sql`
+2. `backend/database/datos_iniciales.sql`
 
+El `schema.sql` ya incluye todo; los archivos de `backend/migraciones/` solo hacen falta si la base se creó con una versión anterior. Creá además un bucket público llamado `Cabanas` en Supabase Storage.
+
+### 3. Backend
 ```bash
 cd backend
 npm install
+cp .env.example .env     # en Windows: copy .env.example .env
+```
+Completá el `.env` (ver [Variables de entorno](#-variables-de-entorno)) y creá el superadmin:
+```bash
+# Agregá al .env: SEED_EMAIL, SEED_USUARIO, SEED_PASSWORD y SEED_LLAVE (llave maestra)
+node src/config/seed.js
+npm run dev
+```
+La API queda en `http://localhost:3000`.
+
+### 4. Web
+```bash
+cd frontend-web
+npm install
+npm run dev
+```
+La web queda en `http://localhost:5173`. Por defecto usa `http://localhost:3000/api`; para cambiarlo, definí `VITE_API_URL`.
+
+### 5. App móvil
+```bash
+cd mobile
+npm install
 cp .env.example .env
-# Completar las variables en .env con los datos de Supabase
+npx expo start -c
 ```
-
-### 3. Crear las tablas en Supabase
-
-```bash
-# Copiar el contenido de src/config/database.sql
-# y ejecutarlo en el SQL Editor de Supabase
-```
-
-### 4. Crear el superadmin
-
-```bash
-# Ejecutar en el SQL Editor de Supabase:
-INSERT INTO admins (nombre, email, password, es_superadmin)
-VALUES ('Superadmin', 'admin@cabins.com', 'hash_de_bcrypt', TRUE);
-```
-
-### 5. Iniciar el servidor
-
-```bash
-npm run dev
-```
-
-### 6. Configurar y correr el frontend web
-
-```bash
-cd ../frontend-web
-npm install
-npm run dev
-```
-
-El cliente correrá en `http://localhost:5173`
-
-### 7. Configurar y correr la app móvil
-
-```bash
-cd ../frontend-mobile
-npm install
-npx expo start
-# Escanear el QR con Expo Go en tu dispositivo Android
-```
+Escaneá el QR con Expo Go. El teléfono y la PC deben estar en la **misma red WiFi**. En `.env`, `EXPO_PUBLIC_API_URL` debe terminar en `/api` y sin barra final: por ejemplo `http://IP-DE-TU-PC:3000/api` o la URL de Render.
 
 ---
 
 ## 🔐 Variables de entorno
 
-Crear un archivo `.env` en `/backend` basado en `.env.example`:
+Nunca se suben al repositorio (`.env` está en `.gitignore`).
 
-```env
-PORT=3000
-SUPABASE_URL=https://tu-proyecto.supabase.co
-SUPABASE_KEY=tu_supabase_anon_key
-JWT_SECRET=tu_clave_secreta_jwt
-JWT_EXPIRES_IN=24h
-```
+**Backend (`backend/.env`)**
 
----
+| Variable | Descripción |
+|----------|-------------|
+| `PORT` | Puerto del servidor |
+| `DATABASE_URL` | Cadena de conexión a Postgres (Supabase, pooler en modo sesión) |
+| `JWT_SECRET` | Clave para firmar los tokens |
+| `JWT_EXPIRES_IN` | Duración del token (24h) |
+| `SUPABASE_URL` | URL del proyecto de Supabase |
+| `SUPABASE_SERVICE_KEY` | Clave de servicio (solo en el backend) |
+| `SUPABASE_BUCKET` | Nombre del bucket de imágenes (`Cabanas`) |
+| `BREVO_API_KEY` | Clave de Brevo |
+| `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | Remitente de los correos |
+| `FRONTEND_URL` | URL de la web, usada en el enlace de recuperación |
+| `SEED_EMAIL`, `SEED_USUARIO`, `SEED_PASSWORD`, `SEED_LLAVE` | Solo para crear el superadmin con `seed.js` |
 
-## 🖥 Vistas del sistema
-
-### Página de Inicio (Invitado)
-Accesible sin autenticación. Incluye banner, quiénes somos, servicios, ubicación en Buenos Aires y cómo alquilar.
-
-> 💡 Al iniciar sesión el nav cambia según el rol y se mantiene en todas las vistas.
-
-### Barra lateral
-
-| Vista | Tipo | Contenido |
-|-------|------|-----------|
-| Reservas | Filtros | Localidad, precio, valoración |
-| Mis Reservas | Índice | Activas, Historial, Canceladas |
-| Carrito | Índice | Cabañas agregadas, Resumen |
-| Reclamos | Índice | Nuevos, En proceso, Finalizados |
-| Ayuda | Índice | FAQ, Cómo reservar, Contacto |
-| Finanzas | Índice | Ingresos, Ocupación, Reservas, Promedio |
-| Gestionar Reservas | Índice | Pendientes, Confirmadas, Canceladas |
-
-### Flujo de reserva
-
-```
-Explorar cabañas → Agregar al carrito → Fechas y personas
-→ Checkout → Pago simulado → Confirmación ✅
-```
+**Web:** `VITE_API_URL` (dirección de la API, con `/api` al final).
+**Móvil:** `EXPO_PUBLIC_API_URL` (dirección de la API, con `/api` al final).
 
 ---
 
-## 💬 Sistema de Reclamos con Chat
+## ☁️ Despliegue
 
-El sistema de reclamos funciona como un chat estilo WhatsApp con tres estados:
-
-| Estado | Descripción |
-|--------|-------------|
-| 🔴 Nuevo | Reclamo recién creado, sin respuesta del admin |
-| 🟡 En proceso | Conversación activa entre usuario y admin |
-| ✅ Finalizado | Cerrado por el admin — solo historial visible |
-
-### Vista Web (estilo Facebook Messenger)
-- Panel izquierdo con lista de chats separados por estado
-- Panel derecho con conversación activa en burbujas
-
-### Vista Móvil (estilo WhatsApp)
-- Lista de reclamos con tabs: Nuevos / En proceso / Finalizados
-- Al entrar: conversación a pantalla completa con input en la parte inferior
+| Servicio | Configuración |
+|----------|---------------|
+| **Render** (backend) | Raíz `backend`, build `npm install`, start `npm start`, y las variables del backend. El plan gratuito se duerme: la primera petición puede tardar unos segundos. |
+| **Vercel** (web) | Raíz `frontend-web`, build `npm run build`, variable `VITE_API_URL` apuntando a Render. `vercel.json` ya redirige todas las rutas a `index.html`. |
+| **Supabase** | Base de datos, bucket `Cabanas` y RLS. |
 
 ---
 
-## 📡 Endpoints de la API
+## 📡 API
 
-### Autenticación
+Todas las rutas cuelgan de `/api`. Las que requieren sesión usan el encabezado `Authorization: Bearer <token>`.
 
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/register` | Registro de usuario | ❌ |
-| POST | `/api/auth/login` | Login usuario + JWT | ❌ |
-| POST | `/api/auth/login-admin` | Login admin + JWT | ❌ |
-| POST | `/api/auth/logout` | Cerrar sesión | ✅ |
-
-### Cabañas
-
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/cabanas` | Listar con filtros y orden | ❌ |
-| GET | `/api/cabanas/:id` | Detalle de cabaña | ❌ |
-| POST | `/api/cabanas` | Crear cabaña | ✅ Admin |
-| PUT | `/api/cabanas/:id` | Editar cabaña | ✅ Admin |
-| DELETE | `/api/cabanas/:id` | Desactivar cabaña | ✅ Admin |
-
-### Reservas
-
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/reservas/mis-reservas` | Mis reservas | ✅ Usuario |
-| POST | `/api/reservas` | Crear reserva | ✅ Usuario |
-| PUT | `/api/reservas/:id` | Modificar fechas | ✅ Usuario |
-| DELETE | `/api/reservas/:id` | Cancelar reserva | ✅ Usuario |
-| GET | `/api/reservas` | Todas las reservas | ✅ Admin |
-| PUT | `/api/reservas/:id/estado` | Cambiar estado | ✅ Admin |
-
-### Reclamos y Chat
-
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/reclamos/mis-reclamos` | Mis reclamos | ✅ Usuario |
-| POST | `/api/reclamos` | Crear reclamo | ✅ Usuario |
-| GET | `/api/reclamos` | Todos los reclamos | ✅ Admin |
-| PUT | `/api/reclamos/:id/cerrar` | Cerrar reclamo | ✅ Admin |
-| GET | `/api/reclamos/:id/mensajes` | Mensajes del chat | ✅ Usuario/Admin |
-| POST | `/api/reclamos/:id/mensajes` | Enviar mensaje | ✅ Usuario/Admin |
-
-### Comunidad, Finanzas y Notificaciones
-
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/finanzas/resumen` | Datos para gráficos | ✅ Admin |
-| POST | `/api/calificaciones` | Calificar cabaña | ✅ Usuario |
-| GET | `/api/calificaciones` | Ver calificaciones | ✅ Admin |
-| POST | `/api/opiniones` | Dejar opinión | ✅ Usuario |
-| GET | `/api/opiniones` | Ver opiniones | ✅ Admin |
-| GET | `/api/notificaciones` | Ver notificaciones | ✅ Admin |
-| PUT | `/api/notificaciones/:id/leer` | Marcar como leída | ✅ Admin |
+| Módulo | Endpoints principales | Acceso |
+|--------|-----------------------|--------|
+| Autenticación | `POST /auth/register`, `/auth/login`, `/auth/login-admin`, `/auth/olvide-clave`, `/auth/restablecer-clave` | Público |
+| Ubicación | `GET /provincias`, `GET /provincias/:id/localidades` | Público |
+| Cabañas | `GET /cabanas`, `GET /cabanas/destacadas`, `GET /cabanas/:id` | Público |
+| | `GET /cabanas/panel`, `POST /cabanas`, `PUT /cabanas/:id`, `DELETE /cabanas/:id` | Dueño |
+| Imágenes | `POST /imagenes` | Dueño |
+| Carrito | `GET/POST /carrito`, `PUT/DELETE /carrito/:id` | Usuario |
+| Reservas | `POST /reservas/pagar`, `GET /reservas/mis-reservas`, `PUT/DELETE /reservas/:id` | Usuario |
+| | `POST/GET/DELETE /reservas/checkout` (bloqueo de 15 minutos) | Usuario |
+| | `GET /reservas`, `PUT /reservas/:id/estado` | Dueño |
+| Calificaciones y opiniones | `GET /calificaciones/pendientes`, `POST /calificaciones` | Usuario |
+| | `GET /calificaciones`, `GET /opiniones`, `GET /opiniones/cabana/:id` | Admin / público |
+| Reclamos | `POST /reclamos`, `GET /reclamos/mis-reclamos` | Usuario |
+| | `GET /reclamos`, `PUT /reclamos/:id/cerrar` | Admin / dueño |
+| | `GET/POST /reclamos/:id/mensajes` | Usuario y dueño |
+| Planes | `GET /planes`, `POST /planes/cabanas/:id/contratar` | Dueño |
+| Finanzas | `GET /finanzas/resumen` | Dueño y superadmin |
+| | `GET /finanzas/reservas` | Superadmin |
+| Notificaciones | `GET /notificaciones`, `PUT /notificaciones/leer-todas`, `PUT /notificaciones/:id/leer` | Admin |
+| Perfil | `GET/PUT /perfil`, `PUT /perfil/password` | Con sesión |
+| Cuentas | `/admins` y `/usuarios` (listar, editar, suspender, reactivar, eliminar) | Superadmin |
 
 ---
 
 ## 🗄 Base de datos
 
-```sql
-CREATE TABLE usuarios (
-  id         SERIAL PRIMARY KEY,
-  nombre     VARCHAR(100) NOT NULL,
-  email      VARCHAR(150) NOT NULL UNIQUE,
-  password   VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+15 tablas en PostgreSQL: `provincia`, `localidad`, `admin`, `usuario`, `cabana`, `plan_cabana`, `reserva`, `carrito`, `bloqueo`, `calificacion`, `opinion`, `reclamo`, `mensaje_reclamo`, `notificacion` y `recuperacion_clave`.
 
-CREATE TABLE admins (
-  id            SERIAL PRIMARY KEY,
-  nombre        VARCHAR(100) NOT NULL,
-  email         VARCHAR(150) NOT NULL UNIQUE,
-  password      VARCHAR(255) NOT NULL,
-  es_superadmin BOOLEAN DEFAULT FALSE,
-  created_at    TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE cabanas (
-  id                  SERIAL PRIMARY KEY,
-  nombre              VARCHAR(150) NOT NULL,
-  descripcion         TEXT NOT NULL,
-  localidad           VARCHAR(100) NOT NULL,
-  precio_por_noche    DECIMAL(10,2) NOT NULL,
-  cantidad_disponible INT NOT NULL DEFAULT 1,
-  imagen_url          VARCHAR(500),
-  metodos_pago        VARCHAR(255),
-  admin_id            INT REFERENCES admins(id),
-  activa              BOOLEAN DEFAULT TRUE,
-  created_at          TIMESTAMP DEFAULT NOW(),
-  updated_at          TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE reservas (
-  id                SERIAL PRIMARY KEY,
-  usuario_id        INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  cabana_id         INT NOT NULL REFERENCES cabanas(id),
-  cantidad_personas INT NOT NULL DEFAULT 1,
-  fecha_checkin     DATE NOT NULL,
-  fecha_checkout    DATE NOT NULL,
-  precio_total      DECIMAL(10,2) NOT NULL,
-  estado            VARCHAR(20) DEFAULT 'pendiente'
-                    CHECK (estado IN ('pendiente','confirmada','cancelada','completada')),
-  created_at        TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE calificaciones (
-  id         SERIAL PRIMARY KEY,
-  usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  cabana_id  INT NOT NULL REFERENCES cabanas(id) ON DELETE CASCADE,
-  puntaje    SMALLINT NOT NULL CHECK (puntaje BETWEEN 1 AND 5),
-  created_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE (usuario_id, cabana_id)
-);
-
-CREATE TABLE opiniones (
-  id         SERIAL PRIMARY KEY,
-  usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  cabana_id  INT NOT NULL REFERENCES cabanas(id) ON DELETE CASCADE,
-  contenido  TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE reclamos (
-  id         SERIAL PRIMARY KEY,
-  usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  asunto     VARCHAR(200) NOT NULL,
-  estado     VARCHAR(20) DEFAULT 'nuevo'
-             CHECK (estado IN ('nuevo','en_proceso','finalizado')),
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE mensajes_reclamo (
-  id             SERIAL PRIMARY KEY,
-  reclamo_id     INT NOT NULL REFERENCES reclamos(id) ON DELETE CASCADE,
-  remitente_id   INT NOT NULL,
-  remitente_tipo VARCHAR(10) NOT NULL CHECK (remitente_tipo IN ('usuario','admin')),
-  mensaje        TEXT NOT NULL,
-  created_at     TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE notificaciones (
-  id         SERIAL PRIMARY KEY,
-  admin_id   INT NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-  tipo       VARCHAR(20) NOT NULL
-             CHECK (tipo IN ('nueva_reserva','reclamo','cancelacion','opinion')),
-  mensaje    VARCHAR(500) NOT NULL,
-  leida      BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
+- Una restricción de exclusión impide que dos reservas activas de la misma cabaña se superpongan.
+- RLS está activado en todas las tablas; el backend se conecta con un rol que lo administra.
+- El detalle completo está en `backend/database/schema.sql` y en el Anexo A del SRS.
 
 ---
+
+## 🔒 Seguridad
+
+- Contraseñas con **bcrypt**; mínimo 8 y máximo 72 caracteres.
+- Tokens **JWT** de 24 horas con el rol; el servidor revisa en cada petición que la cuenta exista y no esté suspendida.
+- Consultas SQL **parametrizadas** y validación de datos en el backend.
+- Recuperación de contraseña con código aleatorio de 256 bits: en la base solo se guarda su huella SHA-256, vence a los 60 minutos, se usa una sola vez y tiene límite de 3 pedidos por hora.
+- Subida de imágenes: se valida el contenido real del archivo (no la extensión), máximo 5 MB, solo JPG, PNG o WEBP (se rechaza SVG).
+- No se guardan datos de tarjeta. La clave de servicio de Supabase solo existe en el backend.
+
+---
+
+## 🧪 Documentación y pruebas
+
+La tesis incluye estos documentos:
+
+- **SRS v4.0** — 62 requerimientos funcionales, 21 no funcionales y 40 casos de uso.
+- **Casos de Prueba v2.0** — 182 casos (API, UI, BD e inspección), con el estado de cada uno.
+- **Matriz de Trazabilidad v1.0** — relación entre requerimientos, casos de uso y casos de prueba.
+
+Para probar la API a mano en Windows, `herramientas/api.ps1` define los atajos `Api`, `Entrar`, `EntrarAdmin` e `IdLoc`.
+
+---
+
+## 📸 Créditos
+
+Las imágenes de ejemplo provienen de [Unsplash](https://unsplash.com) y pertenecen a sus autores.
