@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Aviso, Boton, Campo } from '../components/Ui';
 import { colores } from '../theme/colores';
 import { contarNoches, formatearFechaCorta } from '../utils/fechas';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const aFormulario = (p) => ({
   nombre: p.nombre, apellido: p.apellido, email: p.email, usuario: p.usuario,
   fecha_nacimiento: p.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0, 10) : ''
 });
 
-export default function Perfil() {
-  const { logout, actualizarUsuario } = useAuth();
+export default function Perfil({ enStack }) {
+  const { user, logout, actualizarUsuario } = useAuth();
+  const esAdmin = user.rol === 'admin';
+  const rolTexto = !esAdmin ? 'Huésped' : user.es_superadmin ? 'Superadmin' : 'Dueño de cabañas';
   const [perfil, setPerfil] = useState(null);
   const [stats, setStats] = useState(null);
   const [errorCarga, setErrorCarga] = useState('');
@@ -29,7 +32,7 @@ export default function Perfil() {
     api.get('/perfil')
       .then(({ data }) => { if (activo) { setPerfil(data); setForm(aFormulario(data)); } })
       .catch((err) => activo && setErrorCarga(mensajeError(err)));
-    api.get('/reservas/mis-reservas')
+    if (!esAdmin) api.get('/reservas/mis-reservas')
       .then(({ data }) => {
         if (!activo) return;
         const hechas = data.filter((r) => r.estado === 'completada');
@@ -37,7 +40,7 @@ export default function Perfil() {
       })
       .catch(() => {});
     return () => { activo = false; };
-  }, []);
+  }, [esAdmin]);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -87,13 +90,13 @@ export default function Perfil() {
   if (!perfil || !form) return <ActivityIndicator color={colores.primario} style={{ marginTop: 60 }} />;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colores.fondo }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <AvoidTeclado conInset={!!enStack}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={estilos.cabecera}>
           <View style={estilos.avatar}><Text style={estilos.avatarTexto}>{perfil.nombre[0]}{perfil.apellido[0]}</Text></View>
           <Text style={estilos.nombre}>{perfil.nombre} {perfil.apellido}</Text>
           <Text style={estilos.dato}>{perfil.email}</Text>
-          <Text style={estilos.suave}>@{perfil.usuario} · Huésped</Text>
+          <Text style={estilos.suave}>@{perfil.usuario} · {rolTexto}</Text>
           <Text style={estilos.suave}>Miembro desde {formatearFechaCorta(String(perfil.created_at).slice(0, 10))}</Text>
           {stats && (
             <View style={estilos.stats}>
@@ -138,7 +141,7 @@ export default function Perfil() {
 
         <Pressable onPress={cerrarSesion} style={estilos.cerrar}><Text style={estilos.cerrarTexto}>⎋  Cerrar sesión</Text></Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </AvoidTeclado>
   );
 }
 

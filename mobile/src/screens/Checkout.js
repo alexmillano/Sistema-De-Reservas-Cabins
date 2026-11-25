@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
 import { Aviso, Boton, Campo, Enlace } from '../components/Ui';
 import ResumenTotales from '../components/ResumenTotales';
 import { colores } from '../theme/colores';
 import { formatearPrecio } from '../utils/formato';
 import { formatearFechaCorta, hoyArgentina, mmss } from '../utils/fechas';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const PASOS = ['Resumen', 'Pago', 'Confirmación'];
 const PAGO_VACIO = { titular: '', numero_tarjeta: '', vencimiento: '', cvv: '' };
@@ -140,7 +141,7 @@ export default function Checkout({ navigation }) {
   // ---------- Paso 3: confirmación ----------
   if (confirmacion) {
     return (
-      <ScrollView style={{ backgroundColor: colores.fondo }} contentContainerStyle={estilos.contenido}>
+      <AvoidTeclado><ScrollView style={{ backgroundColor: colores.fondo }} contentContainerStyle={estilos.contenido}>
         <Pasos actual={3} />
         <Text style={estilos.titulo}>¡Reserva registrada! 🎉</Text>
         <Text style={estilos.texto}>
@@ -159,7 +160,7 @@ export default function Checkout({ navigation }) {
           pct={confirmacion.tarifa_servicio_pct} total={confirmacion.total_pagado} etiquetaTotal="Total pagado" />
         <Boton titulo="Ver mis reservas" onPress={() => navigation.navigate('Principal', { screen: 'Reservas' })} />
         <Boton titulo="Seguir explorando" onPress={() => navigation.navigate('Principal', { screen: 'Catalogo' })} secundario />
-      </ScrollView>
+      </ScrollView></AvoidTeclado>
     );
   }
 
@@ -192,7 +193,7 @@ export default function Checkout({ navigation }) {
   else if (bloqueo.estado === 'error') avisoBloqueo = (<View><Aviso texto={bloqueo.mensaje} /><Boton titulo="Reintentar" onPress={reintentar} /></View>);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colores.fondo }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <AvoidTeclado>
       <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
         <Pasos actual={paso === 'pago' ? 2 : 1} />
         {avisoBloqueo}
@@ -239,7 +240,7 @@ export default function Checkout({ navigation }) {
           </>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </AvoidTeclado>
   );
 }
 

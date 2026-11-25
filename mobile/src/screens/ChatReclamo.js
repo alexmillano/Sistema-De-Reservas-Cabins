@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Aviso } from '../components/Ui';
 import { colores } from '../theme/colores';
 import { formatearFechaCorta } from '../utils/fechas';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const INTERVALO_MS = 4000;
 const ETIQUETA = { nuevo: 'Nuevo', en_proceso: 'En proceso', finalizado: 'Finalizado' };
@@ -18,6 +20,9 @@ const hora = (iso) => {
 
 export default function ChatReclamo({ route }) {
   const { id } = route.params;
+  const { user } = useAuth();
+  const soyDueno = user.rol === 'admin';
+  const [cerrando, setCerrando] = useState(false);
   const [reclamo, setReclamo] = useState(null);
   const [mensajes, setMensajes] = useState([]);
   const [vistoHasta, setVistoHasta] = useState(null);
@@ -78,13 +83,23 @@ export default function ChatReclamo({ route }) {
     }
   };
 
+  const finalizar = () => {
+    Alert.alert('Finalizar reclamo', 'El chat quedará cerrado: solo se podrá ver el historial. ¿Querés finalizarlo?', [
+      { text: 'Volver', style: 'cancel' },
+      { text: 'Finalizar', style: 'destructive', onPress: async () => {
+        setCerrando(true);
+        try { await api.put(`/reclamos/${id}/cerrar`); await cargar(); } catch (err) { setErrorEnvio(mensajeError(err)); } finally { setCerrando(false); }
+      } }
+    ]);
+  };
+
   if (cargando) return <ActivityIndicator color={colores.primario} style={{ marginTop: 60 }} />;
   if (error && !reclamo) return <View style={{ padding: 20 }}><Aviso texto={error} /></View>;
 
   const finalizado = reclamo.estado === 'finalizado';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colores.fondo }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+    <AvoidTeclado>
       <View style={estilos.cab}>
         <View style={{ flex: 1 }}>
           <Text style={estilos.asunto}>{reclamo.asunto}</Text>
@@ -96,17 +111,22 @@ export default function ChatReclamo({ route }) {
         </View>
         <View style={[estilos.estado, finalizado && { backgroundColor: colores.textoSuave }]}><Text style={estilos.estadoTexto}>{ETIQUETA[reclamo.estado]}</Text></View>
       </View>
+      {soyDueno && !finalizado && (
+        <Pressable onPress={finalizar} disabled={cerrando} style={estilos.finalizar}>
+          <Text style={estilos.finalizarTexto}>{cerrando ? 'Finalizando...' : '✓ Finalizar reclamo'}</Text>
+        </Pressable>
+      )}
 
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: 14, gap: 10 }}
+      <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 14, gap: 10 }}
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
         {mensajes.length === 0 && <Text style={[estilos.suave, { textAlign: 'center' }]}>Todavía no hay mensajes.</Text>}
         {mensajes.map((m) => {
-          const propio = m.remitente_tipo === 'usuario';
+          const propio = m.remitente_tipo === (soyDueno ? 'admin' : 'usuario');
           const visto = vistoHasta !== null && m.id <= vistoHasta;
           return (
             <View key={m.id} style={[estilos.filaMsg, propio && { justifyContent: 'flex-end' }]}>
               <View style={[estilos.burbuja, propio ? estilos.propia : estilos.ajena]}>
-                {!propio && <Text style={estilos.autor}>Dueño de la cabaña</Text>}
+                {!propio && <Text style={estilos.autor}>{soyDueno ? `${reclamo.usuario_nombre || 'Huésped'} ${reclamo.usuario_apellido || ''}`.trim() : 'Dueño de la cabaña'}</Text>}
                 <Text style={[estilos.msg, propio && { color: '#fff' }]}>{m.mensaje}</Text>
                 <Text style={[estilos.pie, propio && { color: '#e7d6c5' }]}>{hora(m.created_at)}{propio ? (visto ? '  ✓✓' : '  ✓') : ''}</Text>
               </View>
@@ -130,7 +150,7 @@ export default function ChatReclamo({ route }) {
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </AvoidTeclado>
   );
 }
 
@@ -138,6 +158,8 @@ const estilos = StyleSheet.create({
   cab: { flexDirection: 'row', gap: 10, padding: 14, backgroundColor: colores.chip, alignItems: 'center' },
   asunto: { fontSize: 17, fontWeight: '800', color: colores.texto },
   suave: { color: colores.textoSuave, fontSize: 12, marginTop: 2 },
+  finalizar: { alignSelf: 'flex-end', marginHorizontal: 14, marginTop: 8, borderWidth: 1, borderColor: colores.primario, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 },
+  finalizarTexto: { color: colores.primario, fontWeight: '700', fontSize: 13 },
   estado: { backgroundColor: colores.dorado, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   estadoTexto: { color: '#fff', fontWeight: '800', fontSize: 11 },
   filaMsg: { flexDirection: 'row' },

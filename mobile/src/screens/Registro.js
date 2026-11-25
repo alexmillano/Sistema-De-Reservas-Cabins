@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import api, { mensajeError } from '../api/client';
 import { Aviso, Boton, Campo, Enlace } from '../components/Ui';
 import { colores } from '../theme/colores';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const VACIO = { nombre: '', apellido: '', email: '', usuario: '', password: '', confirmar: '', fecha_nacimiento: '' };
 
@@ -40,7 +41,7 @@ export default function Registro({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colores.fondo }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <AvoidTeclado>
       <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
         <Aviso texto={error} />
         <Campo etiqueta="Nombre" value={form.nombre} onChangeText={set('nombre')} autoCapitalize="words" />
@@ -54,7 +55,7 @@ export default function Registro({ navigation }) {
         <Boton titulo="Crear cuenta" onPress={enviar} cargando={cargando} />
         <Enlace texto="Ya tengo cuenta" onPress={() => navigation.navigate('Login')} />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </AvoidTeclado>
   );
 }
 

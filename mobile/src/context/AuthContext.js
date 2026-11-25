@@ -26,6 +26,13 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }, []);
 
+  const loginAdmin = useCallback(async (identificador, password) => {
+    const { data } = await api.post('/auth/login-admin', { identificador, password });
+    await guardarSesion(data.token, data.user);
+    setAviso('');
+    setUser(data.user);
+  }, []);
+
   const logout = useCallback(async () => {
     await borrarSesion();
     setUser(null);
@@ -41,8 +48,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const valor = useMemo(
-    () => ({ user, cargando, aviso, setAviso, login, logout, actualizarUsuario }),
-    [user, cargando, aviso, login, logout, actualizarUsuario]
+    () => ({ user, cargando, aviso, setAviso, login, loginAdmin, logout, actualizarUsuario }),
+    [user, cargando, aviso, login, loginAdmin, logout, actualizarUsuario]
   );
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
 }

@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import api, { mensajeError } from '../api/client';
 import { Aviso, Boton } from '../components/Ui';
 import { colores } from '../theme/colores';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const FILTROS = [
   { clave: '', texto: 'Todos' }, { clave: 'nuevo', texto: 'Nuevos' },
@@ -88,7 +89,7 @@ function Ayuda() {
   const visibles = PREGUNTAS.filter((x) => !termino || x.p.toLowerCase().includes(termino) || x.r.toLowerCase().includes(termino));
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+    <AvoidTeclado conInset={false}><ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
       <Text style={estilos.titulo}>Centro de ayuda</Text>
       <Text style={estilos.nota}>Respuestas rápidas sobre cómo reservar, cancelar y reclamar.</Text>
       <TextInput style={estilos.buscador} value={busqueda} onChangeText={(t) => { setBusqueda(t); setAbierta(null); }}
@@ -108,7 +109,7 @@ function Ayuda() {
         <Text style={estilos.suave}>Escribinos a contacto@cabins.com o hacé un reclamo sobre alguna de tus reservas.</Text>
         <Boton titulo="Escribir un mail" onPress={() => Linking.openURL('mailto:contacto@cabins.com').catch(() => {})} secundario />
       </View>
-    </ScrollView>
+    </ScrollView></AvoidTeclado>
   );
 }
 

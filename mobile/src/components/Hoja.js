@@ -1,13 +1,15 @@
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colores } from '../theme/colores';
 
 // Ventana que sube desde abajo, con título y contenido que se puede desplazar
 export default function Hoja({ visible, titulo, onCerrar, children }) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
-      <KeyboardAvoidingView style={estilos.fondo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={estilos.fondo} behavior="padding">
         <Pressable style={{ flex: 1 }} onPress={onCerrar} />
-        <View style={estilos.hoja}>
+        <View style={[estilos.hoja, { paddingBottom: 16 + insets.bottom }]}>
           <View style={estilos.cab}>
             <Text style={estilos.titulo} numberOfLines={2}>{titulo}</Text>
             <Pressable onPress={onCerrar} hitSlop={10}><Text style={estilos.cerrar}>✕</Text></Pressable>

@@ -5,6 +5,7 @@ import { Aviso } from '../components/Ui';
 import CajaReserva from '../components/CajaReserva';
 import { colores } from '../theme/colores';
 import { estrellas, formatearFecha } from '../utils/formato';
+import AvoidTeclado from '../components/AvoidTeclado';
 
 const POR_PAGINA = 5;
 
@@ -65,7 +66,7 @@ export default function DetalleCabana({ route, navigation }) {
   const metodos = cabana.metodos_pago ? cabana.metodos_pago.split(',').map((m) => m.trim()).filter(Boolean) : [];
 
   return (
-    <ScrollView style={{ backgroundColor: colores.fondo }} contentContainerStyle={{ paddingBottom: 32 }}>
+    <AvoidTeclado><ScrollView style={{ backgroundColor: colores.fondo }} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
       {cabana.imagen_url && !imagenRota ? (
         <Image source={{ uri: cabana.imagen_url }} style={estilos.imagen} onError={() => setImagenRota(true)} />
       ) : (
@@ -109,7 +110,7 @@ export default function DetalleCabana({ route, navigation }) {
         <Aviso texto={errorMas} />
         {hayMas && <Boton titulo="Ver más opiniones" onPress={verMas} cargando={cargandoMas} secundario />}
       </View>
-    </ScrollView>
+    </ScrollView></AvoidTeclado>
   );
 }
 
