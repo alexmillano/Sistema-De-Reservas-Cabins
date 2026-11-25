@@ -21,7 +21,8 @@ const hora = (iso) => {
 export default function ChatReclamo({ route }) {
   const { id } = route.params;
   const { user } = useAuth();
-  const soyDueno = user.rol === 'admin';
+  const soyDueno = user.rol === 'admin' && !user.es_superadmin;
+  const soloMira = Boolean(user.es_superadmin);
   const [cerrando, setCerrando] = useState(false);
   const [reclamo, setReclamo] = useState(null);
   const [mensajes, setMensajes] = useState([]);
@@ -121,12 +122,12 @@ export default function ChatReclamo({ route }) {
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
         {mensajes.length === 0 && <Text style={[estilos.suave, { textAlign: 'center' }]}>Todavía no hay mensajes.</Text>}
         {mensajes.map((m) => {
-          const propio = m.remitente_tipo === (soyDueno ? 'admin' : 'usuario');
+          const propio = !soloMira && m.remitente_tipo === (soyDueno ? 'admin' : 'usuario');
           const visto = vistoHasta !== null && m.id <= vistoHasta;
           return (
             <View key={m.id} style={[estilos.filaMsg, propio && { justifyContent: 'flex-end' }]}>
               <View style={[estilos.burbuja, propio ? estilos.propia : estilos.ajena]}>
-                {!propio && <Text style={estilos.autor}>{soyDueno ? `${reclamo.usuario_nombre || 'Huésped'} ${reclamo.usuario_apellido || ''}`.trim() : 'Dueño de la cabaña'}</Text>}
+                {!propio && <Text style={estilos.autor}>{soloMira ? (m.remitente_tipo === 'admin' ? 'Dueño de la cabaña' : `${reclamo.usuario_nombre || 'Huésped'} ${reclamo.usuario_apellido || ''}`.trim()) : soyDueno ? `${reclamo.usuario_nombre || 'Huésped'} ${reclamo.usuario_apellido || ''}`.trim() : 'Dueño de la cabaña'}</Text>}
                 <Text style={[estilos.msg, propio && { color: '#fff' }]}>{m.mensaje}</Text>
                 <Text style={[estilos.pie, propio && { color: '#e7d6c5' }]}>{hora(m.created_at)}{propio ? (visto ? '  ✓✓' : '  ✓') : ''}</Text>
               </View>
@@ -136,7 +137,9 @@ export default function ChatReclamo({ route }) {
       </ScrollView>
 
       <Aviso texto={error} />
-      {finalizado ? (
+      {soloMira ? (
+        <Text style={estilos.finalizado}>Modo consulta: el superadmin solo puede leer este chat.</Text>
+      ) : finalizado ? (
         <Text style={estilos.finalizado}>Este reclamo está finalizado: ya no se pueden enviar mensajes.</Text>
       ) : (
         <View>
