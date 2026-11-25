@@ -66,6 +66,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Menú hamburguesa (pantallas chicas): se guarda en qué pantalla se abrió, así se cierra solo al navegar
+  const [panelEn, setPanelEn] = useState(null);
+  const panelAbierto = panelEn === location.pathname;
   const [confirmando, setConfirmando] = useState(false);
   const [noLeidas, setNoLeidas] = useState(0);
   const [reclamosSinLeer, setReclamosSinLeer] = useState(0);
@@ -141,7 +144,7 @@ export default function Navbar() {
       <div className="nav-inner">
         <Logo alto={28} />
 
-        <nav className="nav-links"><Enlaces items={items} /></nav>
+        <nav id="menu-principal" className={`nav-links${panelAbierto ? ' abierto' : ''}`}><Enlaces items={items} /></nav>
 
         <div className="nav-acciones">
           {user.rol === 'usuario' && (
@@ -166,6 +169,11 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
+          <button type="button" className="nav-hamburguesa" aria-label={panelAbierto ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={panelAbierto} aria-controls="menu-principal" onClick={() => setPanelEn(panelAbierto ? null : location.pathname)}>
+            <span /><span /><span />
+          </button>
         </div>
       </div>
 
