@@ -44,7 +44,8 @@ CREATE TABLE admin (
   updated_at        TIMESTAMP DEFAULT NOW(),
   baneado           BOOLEAN NOT NULL DEFAULT FALSE,
   motivo_baneo      VARCHAR(500),
-  baneado_at        TIMESTAMP
+  baneado_at        TIMESTAMP,
+  foto_url          TEXT                            -- foto de perfil (opcional)
 );
 
 -- usuario = huésped
@@ -60,7 +61,8 @@ CREATE TABLE usuario (
   updated_at        TIMESTAMP DEFAULT NOW(),
   baneado           BOOLEAN NOT NULL DEFAULT FALSE,
   motivo_baneo      VARCHAR(500),
-  baneado_at        TIMESTAMP
+  baneado_at        TIMESTAMP,
+  foto_url          TEXT                            -- foto de perfil (opcional)
 );
 
 -- ---------------------------------------------------------------------
@@ -234,3 +236,24 @@ CREATE TABLE recuperacion_clave (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_recuperacion_cuenta ON recuperacion_clave (rol, cuenta_id, created_at);
+
+-- ---------------------------------------------------------------------
+-- Seguridad: RLS activado en todas las tablas.
+-- El backend se conecta con el usuario postgres (Session pooler), que no pasa
+-- por RLS; así la API pública de Supabase queda cerrada y no expone datos.
+-- ---------------------------------------------------------------------
+ALTER TABLE provincia          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE localidad          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usuario            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cabana             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plan_cabana        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reserva            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE carrito            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bloqueo            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calificacion       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE opinion            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reclamo            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mensaje_reclamo    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notificacion       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recuperacion_clave ENABLE ROW LEVEL SECURITY;

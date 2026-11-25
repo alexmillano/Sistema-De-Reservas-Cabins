@@ -1,15 +1,16 @@
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
 const { validarCuenta, validarPassword, armarSet } = require('../utils/validaciones');
+const { subirImagen } = require('../utils/almacenamiento');
 
 // La tabla sale del rol firmado en el token, nunca de lo que manda el cliente
 const TABLAS = { usuario: 'usuario', admin: 'admin' };
 
 const SELECT_PERFIL = {
-  usuario: `SELECT id, nombre, apellido, email, usuario,
+  usuario: `SELECT id, nombre, apellido, email, usuario, foto_url,
                    to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, created_at
             FROM usuario WHERE id = $1`,
-  admin: `SELECT id, nombre, apellido, email, usuario, es_superadmin,
+  admin: `SELECT id, nombre, apellido, email, usuario, es_superadmin, foto_url,
                  to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, created_at
           FROM admin WHERE id = $1`
 };
@@ -123,4 +124,32 @@ const cambiarPassword = async (req, res) => {
   }
 };
 
-module.exports = { getPerfil, actualizarPerfil, cambiarPassword };
+// ---------- Foto de perfil (cualquier cuenta): sube la imagen y guarda su URL ----------
+const subirFoto = async (req, res) => {
+  const tabla = TABLAS[req.user.rol];
+  if (!tabla) return res.status(403).json({ message: 'Rol no válido' });
+  if (!req.file) return res.status(400).json({ message: 'Elegí una imagen para subir' });
+
+  try {
+    const url = await subirImagen(req.file.buffer, `perfil-${tabla}-${req.user.id}`);
+    await db.query(`UPDATE ${tabla} SET foto_url = $1, updated_at = NOW() WHERE id = $2`, [url, req.user.id]);
+    res.json({ message: 'Foto de perfil actualizada', foto_url: url });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    responderError(res, error);
+  }
+};
+
+const quitarFoto = async (req, res) => {
+  const tabla = TABLAS[req.user.rol];
+  if (!tabla) return res.status(403).json({ message: 'Rol no válido' });
+  try {
+    await db.query(`UPDATE ${tabla} SET foto_url = NULL, updated_at = NOW() WHERE id = $1`, [req.user.id]);
+    res.json({ message: 'Foto de perfil eliminada', foto_url: null });
+  } catch (error) {
+    responderError(res, error);
+  }
+};
+
+module.exports = {
+  subirFoto, quitarFoto, getPerfil, actualizarPerfil, cambiarPassword };

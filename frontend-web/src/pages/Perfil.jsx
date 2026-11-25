@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +25,9 @@ export default function Perfil() {
   const [msgPass, setMsgPass] = useState({ tipo: '', texto: '' });
   const [cambiandoPass, setCambiandoPass] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [msgFoto, setMsgFoto] = useState('');
+  const inputFoto = useRef(null);
 
   useEffect(() => {
     let activo = true;
@@ -99,6 +102,41 @@ export default function Perfil() {
     }
   };
 
+  const elegirFoto = async (e) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = '';
+    setMsgFoto('');
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) return setMsgFoto('Solo se aceptan imágenes JPG, PNG o WEBP.');
+    if (archivo.size > 5 * 1024 * 1024) return setMsgFoto('La imagen no puede pesar más de 5 MB.');
+    const datos = new FormData();
+    datos.append('imagen', archivo);
+    setSubiendoFoto(true);
+    try {
+      const { data } = await api.put('/perfil/foto', datos);
+      setPerfil((p) => ({ ...p, foto_url: data.foto_url }));
+      actualizarUsuario({ foto_url: data.foto_url });
+    } catch (err) {
+      setMsgFoto(mensajeError(err));
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const quitarFoto = async () => {
+    setMsgFoto('');
+    setSubiendoFoto(true);
+    try {
+      await api.delete('/perfil/foto');
+      setPerfil((p) => ({ ...p, foto_url: null }));
+      actualizarUsuario({ foto_url: null });
+    } catch (err) {
+      setMsgFoto(mensajeError(err));
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
   const cerrarSesion = () => {
     logout();
     navigate('/');
@@ -114,8 +152,20 @@ export default function Perfil() {
     <section className="seccion perfil">
       <div className="tarjeta perfil-cabecera centrado">
         <div className="avatar" aria-hidden="true">
-          {perfil.nombre[0]}{perfil.apellido[0]}
+          {perfil.foto_url
+            ? <img src={perfil.foto_url} alt="" className="avatar-img" />
+            : <>{perfil.nombre[0]}{perfil.apellido[0]}</>}
         </div>
+        <div className="avatar-acciones">
+          <input ref={inputFoto} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={elegirFoto} data-testid="input-foto" />
+          <button type="button" className="btn btn-secundario" disabled={subiendoFoto} onClick={() => inputFoto.current?.click()}>
+            {subiendoFoto ? 'Subiendo...' : perfil.foto_url ? 'Cambiar foto' : 'Subir foto'}
+          </button>
+          {perfil.foto_url && (
+            <button type="button" className="boton-texto" disabled={subiendoFoto} onClick={quitarFoto}>Quitar</button>
+          )}
+        </div>
+        {msgFoto && <div className="mensaje-error" role="status">{msgFoto}</div>}
         <h1>{perfil.nombre} {perfil.apellido}</h1>
         <p>{perfil.email}</p>
         <p className="texto-suave">@{perfil.usuario} · {rolTexto}</p>

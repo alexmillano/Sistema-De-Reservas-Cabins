@@ -128,6 +128,22 @@ const getDestacadas = async (req, res) => {
   }
 };
 
+// ---------- PÚBLICO: las 3 cabañas mejor valoradas (portada, «Dónde estamos») ----------
+// Se calcula en cada consulta: una cabaña nueva entra sola si su promedio la ubica entre las 3 primeras.
+const getMejores = async (req, res) => {
+  try {
+    const result = await db.query(
+      SELECT_CABANA + ` WHERE ${CABANA_VISIBLE} GROUP BY c.id, l.id, p.id, pa.plan
+       ORDER BY valoracion DESC, total_calificaciones DESC, c.created_at DESC
+       LIMIT 3`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
 // ---------- ADMINISTRADOR: panel de cabañas ----------
 // El dueño ve sus cabañas (activas e inactivas). El superadmin ve todas, con el nombre del dueño.
 const getCabanasPanel = async (req, res) => {
@@ -304,4 +320,4 @@ const deleteCabana = async (req, res) => {
 };
 
 module.exports = {
-  getDestacadas, getCabanas, getCabanasPanel, getCabanaById, createCabana, updateCabana, deleteCabana };
+  getDestacadas, getMejores, getCabanas, getCabanasPanel, getCabanaById, createCabana, updateCabana, deleteCabana };

@@ -2,7 +2,15 @@ const db = require('../config/db');
 
 const getProvincias = async (req, res) => {
   try {
-    const result = await db.query('SELECT id, nombre FROM provincia ORDER BY nombre');
+    // Además del nombre, cuántas cabañas activas tiene cada provincia (para el inicio de la web)
+    const result = await db.query(
+      `SELECT p.id, p.nombre, COUNT(c.id)::int AS cabanas
+       FROM provincia p
+       LEFT JOIN localidad l ON l.provincia_id = p.id
+       LEFT JOIN cabana c ON c.localidad_id = l.id AND c.activa = TRUE
+       GROUP BY p.id, p.nombre
+       ORDER BY p.nombre`
+    );
     res.json(result.rows);
   } catch (error) {
     console.error(error);

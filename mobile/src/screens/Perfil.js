@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import api, { mensajeError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Aviso, Boton, Campo } from '../components/Ui';
@@ -26,6 +27,8 @@ export default function Perfil({ enStack }) {
   const [pass, setPass] = useState({ actual: '', nueva: '', repetir: '' });
   const [msgPass, setMsgPass] = useState({ tipo: '', texto: '' });
   const [cambiando, setCambiando] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [errorFoto, setErrorFoto] = useState('');
 
   useEffect(() => {
     let activo = true;
@@ -41,6 +44,43 @@ export default function Perfil({ enStack }) {
       .catch(() => {});
     return () => { activo = false; };
   }, [esAdmin]);
+
+  const EXTENSION = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+  const elegirFoto = async () => {
+    setErrorFoto('');
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, aspect: [1, 1] });
+    if (res.canceled || !res.assets?.length) return;
+    const foto = res.assets[0];
+    const tipo = foto.mimeType || 'image/jpeg';
+    if (!EXTENSION[tipo]) return setErrorFoto('La imagen debe ser JPG, PNG o WEBP.');
+    if (foto.fileSize && foto.fileSize > 5 * 1024 * 1024) return setErrorFoto('La imagen no puede pesar más de 5 MB.');
+    setSubiendoFoto(true);
+    try {
+      const datos = new FormData();
+      datos.append('imagen', { uri: foto.uri, name: `perfil.${EXTENSION[tipo]}`, type: tipo });
+      const { data } = await api.put('/perfil/foto', datos, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 });
+      setPerfil((p) => ({ ...p, foto_url: data.foto_url }));
+      await actualizarUsuario({ foto_url: data.foto_url });
+    } catch (err) {
+      setErrorFoto(mensajeError(err));
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const quitarFoto = async () => {
+    setErrorFoto(''); setSubiendoFoto(true);
+    try {
+      await api.delete('/perfil/foto');
+      setPerfil((p) => ({ ...p, foto_url: null }));
+      await actualizarUsuario({ foto_url: null });
+    } catch (err) {
+      setErrorFoto(mensajeError(err));
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -93,7 +133,17 @@ export default function Perfil({ enStack }) {
     <AvoidTeclado conInset={!!enStack}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={estilos.cabecera}>
-          <View style={estilos.avatar}><Text style={estilos.avatarTexto}>{perfil.nombre[0]}{perfil.apellido[0]}</Text></View>
+          <Pressable onPress={elegirFoto} disabled={subiendoFoto} style={estilos.avatar}>
+            {perfil.foto_url
+              ? <Image source={{ uri: perfil.foto_url }} style={estilos.avatarImg} />
+              : <Text style={estilos.avatarTexto}>{perfil.nombre[0]}{perfil.apellido[0]}</Text>}
+            {subiendoFoto && <View style={estilos.avatarCarga}><ActivityIndicator color="#fff" /></View>}
+          </Pressable>
+          <View style={estilos.fotoAcciones}>
+            <Pressable onPress={elegirFoto} disabled={subiendoFoto}><Text style={estilos.fotoLink}>{perfil.foto_url ? 'Cambiar foto' : 'Subir foto'}</Text></Pressable>
+            {perfil.foto_url ? <Pressable onPress={quitarFoto} disabled={subiendoFoto}><Text style={[estilos.fotoLink, { color: colores.error }]}>Quitar</Text></Pressable> : null}
+          </View>
+          {!!errorFoto && <Text style={{ color: colores.error, fontSize: 12.5, textAlign: 'center' }}>{errorFoto}</Text>}
           <Text style={estilos.nombre}>{perfil.nombre} {perfil.apellido}</Text>
           <Text style={estilos.dato}>{perfil.email}</Text>
           <Text style={estilos.suave}>@{perfil.usuario} · {rolTexto}</Text>
@@ -147,7 +197,11 @@ export default function Perfil({ enStack }) {
 
 const estilos = StyleSheet.create({
   cabecera: { backgroundColor: colores.tarjeta, borderRadius: 16, borderWidth: 1, borderColor: colores.borde, padding: 18, alignItems: 'center', marginBottom: 14 },
-  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colores.primario, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colores.primario, alignItems: 'center', justifyContent: 'center', marginBottom: 4, overflow: 'hidden' },
+  avatarImg: { width: 76, height: 76, borderRadius: 38 },
+  avatarCarga: { ...StyleSheet.absoluteFillObject, borderRadius: 38, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  fotoAcciones: { flexDirection: 'row', gap: 18, marginBottom: 8 },
+  fotoLink: { color: colores.primario, fontWeight: '700', fontSize: 13 },
   avatarTexto: { color: '#fff', fontSize: 26, fontWeight: '800' },
   nombre: { fontSize: 22, fontWeight: '800', color: colores.texto },
   dato: { color: colores.texto, marginTop: 2 },
