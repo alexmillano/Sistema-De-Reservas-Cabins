@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Aviso, Boton } from '../components/Ui';
 import Hoja from '../components/Hoja';
 import { colores } from '../theme/colores';
@@ -9,7 +10,7 @@ import { estrellas, formatearPrecio } from '../utils/formato';
 
 const FILTROS = [['todas', 'Todas'], ['activas', 'Activas'], ['inactivas', 'Inactivas']];
 
-function TarjetaCabana({ cabana, onCambiarEstado, onEditar }) {
+function TarjetaCabana({ cabana, onCambiarEstado, onEditar, soloLectura }) {
   const [rota, setRota] = useState(false);
   return (
     <View style={[estilos.tarjeta, !cabana.activa && { opacity: 0.8 }]}>
@@ -25,6 +26,7 @@ function TarjetaCabana({ cabana, onCambiarEstado, onEditar }) {
         <Text style={estilos.codigo}>Cabaña #{cabana.id}</Text>
         <Text style={estilos.nombre}>{cabana.nombre}</Text>
         <Text style={estilos.ubicacion}>📍 {cabana.localidad}, {cabana.provincia}</Text>
+        {soloLectura && cabana.dueno_nombre ? <Text style={estilos.dueno}>Dueño: {cabana.dueno_nombre} {cabana.dueno_apellido}</Text> : null}
         <View style={estilos.datos}>
           <Text style={estilos.dato}>Hasta {cabana.capacidad_personas} personas</Text>
           {cabana.total_calificaciones > 0
@@ -34,14 +36,14 @@ function TarjetaCabana({ cabana, onCambiarEstado, onEditar }) {
         {!!cabana.metodos_pago && <Text style={estilos.dato}>Pagos: {cabana.metodos_pago}</Text>}
         <View style={estilos.pie}>
           <Text style={estilos.precio}>{formatearPrecio(cabana.precio_por_noche)} <Text style={estilos.noche}>/ noche</Text></Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          {!soloLectura && <View style={{ flexDirection: 'row', gap: 8 }}>
             <Pressable onPress={() => onEditar(cabana)} style={({ pressed }) => [estilos.accion, pressed && { opacity: 0.7 }]}>
               <Text style={estilos.accionTexto}>Editar</Text>
             </Pressable>
             <Pressable onPress={() => onCambiarEstado(cabana)} style={({ pressed }) => [estilos.accion, pressed && { opacity: 0.7 }]}>
               <Text style={estilos.accionTexto}>{cabana.activa ? 'Desactivar' : 'Activar'}</Text>
             </Pressable>
-          </View>
+          </View>}
         </View>
       </View>
     </View>
@@ -49,6 +51,8 @@ function TarjetaCabana({ cabana, onCambiarEstado, onEditar }) {
 }
 
 export default function MisCabanas({ navigation, route }) {
+  const { user } = useAuth();
+  const soloLectura = Boolean(user.es_superadmin); // el superadmin consulta todas las cabañas, sin modificarlas
   const [cabanas, setCabanas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -100,7 +104,7 @@ export default function MisCabanas({ navigation, route }) {
   const visibles = cabanas.filter((c) => {
     if (filtro === 'activas' && !c.activa) return false;
     if (filtro === 'inactivas' && c.activa) return false;
-    return !termino || `${c.nombre} ${c.localidad} ${c.provincia}`.toLowerCase().includes(termino);
+    return !termino || `${c.nombre} ${c.localidad} ${c.provincia} ${c.dueno_nombre || ''} ${c.dueno_apellido || ''}`.toLowerCase().includes(termino);
   });
   const cuenta = (f) => cabanas.filter((c) => (f === 'todas' ? true : f === 'activas' ? c.activa : !c.activa)).length;
 
@@ -110,16 +114,18 @@ export default function MisCabanas({ navigation, route }) {
         keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={false} onRefresh={cargar} />}>
         <View style={estilos.cabecera}>
           <View style={{ flex: 1 }}>
-            <Text style={estilos.titulo}>Mis cabañas</Text>
-            <Text style={estilos.suave}>Administrá tu inventario de propiedades.</Text>
+            <Text style={estilos.titulo}>{soloLectura ? 'Cabañas de la plataforma' : 'Mis cabañas'}</Text>
+            <Text style={estilos.suave}>{soloLectura ? 'Todas las cabañas publicadas (solo consulta).' : 'Administrá tu inventario de propiedades.'}</Text>
           </View>
-          <Pressable onPress={() => navigation.navigate('FormularioCabana')} style={({ pressed }) => [estilos.nueva, pressed && { opacity: 0.8 }]}>
-            <Text style={estilos.nuevaTexto}>+ Nueva</Text>
-          </Pressable>
+          {!soloLectura && (
+            <Pressable onPress={() => navigation.navigate('FormularioCabana')} style={({ pressed }) => [estilos.nueva, pressed && { opacity: 0.8 }]}>
+              <Text style={estilos.nuevaTexto}>+ Nueva</Text>
+            </Pressable>
+          )}
         </View>
 
         <TextInput style={estilos.buscador} value={busqueda} onChangeText={setBusqueda} autoCapitalize="none"
-          placeholder="Buscá por nombre, provincia o localidad..." placeholderTextColor={colores.textoSuave} />
+          placeholder={soloLectura ? 'Buscá por nombre, dueño o provincia...' : 'Buscá por nombre, provincia o localidad...'} placeholderTextColor={colores.textoSuave} />
 
         <View style={estilos.filtros}>
           {FILTROS.map(([k, t]) => (
@@ -138,7 +144,7 @@ export default function MisCabanas({ navigation, route }) {
           </View>
         )}
         {visibles.map((c) => (
-          <TarjetaCabana key={c.id} cabana={c} onEditar={(x) => navigation.navigate('FormularioCabana', { id: x.id })}
+          <TarjetaCabana key={c.id} cabana={c} soloLectura={soloLectura} onEditar={(x) => navigation.navigate('FormularioCabana', { id: x.id })}
             onCambiarEstado={(x) => { setErrorHoja(''); setConfirmando(x); }} />
         ))}
       </ScrollView>
@@ -184,6 +190,7 @@ const estilos = StyleSheet.create({
   codigo: { color: colores.textoSuave, fontSize: 11, fontWeight: '700' },
   nombre: { fontSize: 18, fontWeight: '800', color: colores.texto, marginVertical: 2 },
   ubicacion: { color: colores.textoSuave, marginBottom: 6 },
+  dueno: { color: colores.nav, fontWeight: '700', fontSize: 13, marginBottom: 6 },
   datos: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   dato: { color: colores.textoSuave, fontSize: 13 },
   estrellas: { color: colores.dorado, fontSize: 13 },

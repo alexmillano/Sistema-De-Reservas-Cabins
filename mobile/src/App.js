@@ -30,7 +30,7 @@ import Mas from './screens/Mas';
 import FinanzasDueno from './screens/FinanzasDueno';
 import Planes from './screens/Planes';
 import FinanzasSuper from './screens/FinanzasSuper';
-import CuentasSuper from './screens/CuentasSuper';
+import CuentasTabs from './screens/CuentasTabs';
 import api from './api/client';
 import Pendiente from './screens/Pendiente';
 import { colores } from './theme/colores';
@@ -38,7 +38,7 @@ import { colores } from './theme/colores';
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
-const ICONOS = { Inicio: '🏠', Catalogo: '🔎', Reservas: '📅', Carrito: '🛒', Soporte: '💬', Perfil: '👤', Más: '☰', Dueños: '🏡', Huéspedes: '👥', Cabañas: '🏡', Reclamos: '💬', Finanzas: '📊', Panel: '🛡️' };
+const ICONOS = { Inicio: '🏠', Catalogo: '🔎', Reservas: '📅', Carrito: '🛒', Soporte: '💬', Perfil: '👤', Más: '☰', Cuentas: '👥', Cabañas: '🏡', Reclamos: '💬', Finanzas: '📊', Panel: '🛡️' };
 const TITULOS = { Catalogo: 'Catálogo' };
 
 const opcionesTab = ({ route }) => ({
@@ -55,8 +55,6 @@ const opcionesTab = ({ route }) => ({
 });
 
 const PerfilEnPila = () => <Perfil enStack />;
-const Duenos = () => <CuentasSuper tipo="admins" />;
-const Huespedes = () => <CuentasSuper tipo="usuarios" />;
 
 // Panel del dueño de las cabañas
 function PanelDueno() {
@@ -89,9 +87,9 @@ function PanelDueno() {
 function PanelSuperadmin() {
   return (
     <Tabs.Navigator screenOptions={opcionesTab}>
+      <Tabs.Screen name="Cabañas" component={MisCabanas} />
       <Tabs.Screen name="Finanzas" component={FinanzasSuper} />
-      <Tabs.Screen name="Dueños" component={Duenos} />
-      <Tabs.Screen name="Huéspedes" component={Huespedes} />
+      <Tabs.Screen name="Cuentas" component={CuentasTabs} />
       <Tabs.Screen name="Reclamos" component={ReclamosDueno} />
       <Tabs.Screen name="Perfil" component={Perfil} />
     </Tabs.Navigator>
