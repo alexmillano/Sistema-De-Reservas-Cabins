@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import api, { mensajeError } from '../api/client';
 import { Aviso } from '../components/Ui';
 import CajaReserva from '../components/CajaReserva';
 import { colores } from '../theme/colores';
 import { estrellas, formatearFecha } from '../utils/formato';
 import AvoidTeclado from '../components/AvoidTeclado';
+import GaleriaDetalle from '../components/GaleriaDetalle';
 
 const POR_PAGINA = 5;
 
@@ -19,7 +20,6 @@ export default function DetalleCabana({ route, navigation }) {
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState('');
   const [errorMas, setErrorMas] = useState('');
-  const [imagenRota, setImagenRota] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -67,11 +67,7 @@ export default function DetalleCabana({ route, navigation }) {
 
   return (
     <AvoidTeclado><ScrollView style={{ backgroundColor: colores.fondo }} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
-      {cabana.imagen_url && !imagenRota ? (
-        <Image source={{ uri: cabana.imagen_url }} style={estilos.imagen} onError={() => setImagenRota(true)} />
-      ) : (
-        <View style={[estilos.imagen, estilos.sinImagen]}><Text style={{ color: colores.textoSuave }}>Sin imagen</Text></View>
-      )}
+      <GaleriaDetalle fotos={Array.isArray(cabana.imagenes) && cabana.imagenes.length ? cabana.imagenes : (cabana.imagen_url ? [cabana.imagen_url] : [])} />
 
       <View style={{ padding: 16 }}>
         <Text style={estilos.titulo}>{cabana.nombre}</Text>

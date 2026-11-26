@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import api, { mensajeError } from '../api/client';
 import { Aviso, Boton, Campo, Stepper } from '../components/Ui';
 import Selector from '../components/Selector';
 import AvoidTeclado from '../components/AvoidTeclado';
+import GaleriaEditor from '../components/GaleriaEditor';
 import { colores } from '../theme/colores';
 import { formatearPrecio } from '../utils/formato';
 
 const MEDIOS_PAGO = ['Efectivo', 'Tarjeta', 'MercadoPago'];
 const MAX_DESCRIPCION = 1000;
-const MAX_MB = 5;
-const EXTENSION = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-const VACIO = { nombre: '', descripcion: '', provincia_id: '', localidad_id: '', precio_por_noche: '', capacidad_personas: 2, imagen_url: '', medios: [] };
+const VACIO = { nombre: '', descripcion: '', provincia_id: '', localidad_id: '', precio_por_noche: '', capacidad_personas: 2, imagenes: [], medios: [] };
 
 export default function FormularioCabana({ navigation, route }) {
   const id = route.params?.id;
@@ -24,9 +22,6 @@ export default function FormularioCabana({ navigation, route }) {
   const [errorCarga, setErrorCarga] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [subiendo, setSubiendo] = useState(false);
-  const [errorImagen, setErrorImagen] = useState('');
-  const [imagenRota, setImagenRota] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({ title: editando ? 'Editar cabaña' : 'Nueva cabaña' });
@@ -54,7 +49,7 @@ export default function FormularioCabana({ navigation, route }) {
               nombre: c.nombre, descripcion: c.descripcion,
               provincia_id: String(c.provincia_id), localidad_id: String(c.localidad_id),
               precio_por_noche: String(c.precio_por_noche), capacidad_personas: Number(c.capacidad_personas),
-              imagen_url: c.imagen_url || '',
+              imagenes: Array.isArray(c.imagenes) && c.imagenes.length ? c.imagenes : (c.imagen_url ? [c.imagen_url] : []),
               medios: (c.metodos_pago || '').split(',').map((m) => m.trim()).filter(Boolean)
             });
           }
@@ -83,29 +78,6 @@ export default function FormularioCabana({ navigation, route }) {
 
   const alternarMedio = (m) => setForm((f) => ({ ...f, medios: f.medios.includes(m) ? f.medios.filter((x) => x !== m) : [...f.medios, m] }));
 
-  const elegirFoto = async () => {
-    setErrorImagen('');
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: false });
-    if (res.canceled || !res.assets?.length) return;
-    const foto = res.assets[0];
-    const tipo = foto.mimeType || 'image/jpeg';
-    if (!EXTENSION[tipo]) return setErrorImagen('La imagen debe ser JPG, PNG o WEBP.');
-    if (foto.fileSize && foto.fileSize > MAX_MB * 1024 * 1024) return setErrorImagen(`La imagen no puede pesar más de ${MAX_MB} MB.`);
-
-    setSubiendo(true);
-    try {
-      const datos = new FormData();
-      datos.append('imagen', { uri: foto.uri, name: `portada.${EXTENSION[tipo]}`, type: tipo });
-      const { data } = await api.post('/imagenes', datos, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 });
-      setImagenRota(false);
-      setForm((f) => ({ ...f, imagen_url: data.url }));
-    } catch (err) {
-      setErrorImagen(mensajeError(err));
-    } finally {
-      setSubiendo(false);
-    }
-  };
-
   const enviar = async () => {
     setError('');
     if (!form.nombre.trim()) return setError('Ingresá el nombre de la cabaña.');
@@ -120,7 +92,7 @@ export default function FormularioCabana({ navigation, route }) {
     const cuerpo = {
       nombre: form.nombre.trim(), descripcion: form.descripcion.trim(),
       localidad_id: Number(form.localidad_id), precio_por_noche: precio, capacidad_personas: capacidad,
-      imagen_url: form.imagen_url.trim() || null, metodos_pago: form.medios.join(', ') || null
+      imagen_url: form.imagenes[0] || null, imagenes: form.imagenes, metodos_pago: form.medios.join(', ') || null
     };
 
     setEnviando(true);
@@ -161,20 +133,8 @@ export default function FormularioCabana({ navigation, route }) {
           <Stepper valor={form.capacidad_personas} min={1} max={50} onChange={set('capacidad_personas')} />
         </View>
 
-        <Text style={estilos.seccion}>Imagen de portada (opcional)</Text>
-        <View style={estilos.imagenCaja}>
-          {form.imagen_url && !imagenRota
-            ? <Image source={{ uri: form.imagen_url }} style={estilos.imagen} onError={() => setImagenRota(true)} />
-            : <View style={[estilos.imagen, estilos.sinImagen]}><Text style={{ color: colores.textoSuave }}>Sin imagen</Text></View>}
-          {subiendo && <View style={estilos.subiendo}><ActivityIndicator color="#fff" /><Text style={{ color: '#fff', marginTop: 6 }}>Subiendo...</Text></View>}
-        </View>
-        <Boton titulo={form.imagen_url ? 'Cambiar foto' : 'Elegir foto de la galería'} onPress={elegirFoto} cargando={subiendo} secundario />
-        {!!form.imagen_url && (
-          <Pressable onPress={() => setForm((f) => ({ ...f, imagen_url: '' }))} hitSlop={8}><Text style={estilos.quitar}>Quitar imagen</Text></Pressable>
-        )}
-        <Aviso texto={errorImagen} />
-        <Campo etiqueta="O pegá un enlace a una imagen" value={form.imagen_url} onChangeText={(v) => { setImagenRota(false); set('imagen_url')(v); }}
-          keyboardType="url" placeholder="https://..." />
+        <Text style={estilos.seccion}>Fotos de la cabaña (opcional, hasta 10)</Text>
+        <GaleriaEditor fotos={form.imagenes} onCambio={(fotos) => setForm((f) => ({ ...f, imagenes: fotos }))} />
 
         <Text style={estilos.seccion}>Medios de pago aceptados</Text>
         <View style={estilos.medios}>
@@ -187,8 +147,8 @@ export default function FormularioCabana({ navigation, route }) {
 
         <Text style={estilos.seccion}>Vista previa en el catálogo</Text>
         <View style={estilos.previa}>
-          {form.imagen_url && !imagenRota
-            ? <Image source={{ uri: form.imagen_url }} style={estilos.previaImg} />
+          {form.imagenes[0]
+            ? <Image source={{ uri: form.imagenes[0] }} style={estilos.previaImg} />
             : <View style={[estilos.previaImg, estilos.sinImagen]}><Text style={{ color: colores.textoSuave }}>Sin imagen</Text></View>}
           <View style={{ padding: 12 }}>
             <Text style={estilos.previaNombre}>{form.nombre || 'Nombre de la cabaña'}</Text>

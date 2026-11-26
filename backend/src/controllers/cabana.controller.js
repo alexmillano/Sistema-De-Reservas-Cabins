@@ -12,11 +12,16 @@ const ORDENES = {
   recomendado: 'plan_nivel DESC, valoracion DESC, total_calificaciones DESC, c.created_at DESC'
 };
 
+// Galería de la cabaña (URLs en orden). La primera es la portada.
+const MAX_IMAGENES = 10;
+const IMAGENES = `COALESCE((SELECT json_agg(i.url ORDER BY i.orden, i.id) FROM cabana_imagen i WHERE i.cabana_id = c.id), '[]'::json)`;
+
 const SELECT_CABANA = `
   SELECT c.id, c.nombre, c.descripcion,
          c.precio_por_noche::float AS precio_por_noche,
          c.capacidad_personas, c.imagen_url, c.metodos_pago, c.activa,
          c.created_at,
+         ${IMAGENES} AS imagenes,
          l.id AS localidad_id, l.nombre AS localidad,
          p.id AS provincia_id, p.nombre AS provincia,
          ROUND(COALESCE(AVG(cal.puntaje), 0), 1)::float AS valoracion,
@@ -29,6 +34,31 @@ const SELECT_CABANA = `
   LEFT JOIN calificacion cal ON cal.cabana_id = c.id
   ${JOIN_PLAN}
 `;
+
+// La galería es opcional: si viene, debe ser una lista de hasta 10 enlaces http(s) sin repetir
+const validarImagenes = (imagenes) => {
+  if (imagenes === undefined) return null;
+  if (!Array.isArray(imagenes)) return 'Las imágenes deben enviarse como una lista';
+  if (imagenes.length > MAX_IMAGENES) return `Podés cargar hasta ${MAX_IMAGENES} fotos por cabaña`;
+  const vistas = new Set();
+  for (const url of imagenes) {
+    if (typeof url !== 'string' || url.length > 500 || !/^https?:\/\//i.test(url)) {
+      return 'Cada foto debe ser un enlace válido (http o https) de hasta 500 caracteres';
+    }
+    if (vistas.has(url)) return 'Hay fotos repetidas en la galería';
+    vistas.add(url);
+  }
+  return null;
+};
+
+// Reemplaza la galería de una cabaña y deja la primera foto como portada
+const guardarGaleria = async (cliente, cabanaId, imagenes) => {
+  await cliente.query('DELETE FROM cabana_imagen WHERE cabana_id = $1', [cabanaId]);
+  for (let i = 0; i < imagenes.length; i += 1) {
+    await cliente.query('INSERT INTO cabana_imagen (cabana_id, url, orden) VALUES ($1, $2, $3)', [cabanaId, imagenes[i], i]);
+  }
+  await cliente.query('UPDATE cabana SET imagen_url = $1 WHERE id = $2', [imagenes[0] || null, cabanaId]);
+};
 
 // Devuelve un mensaje de error, o null si los datos son válidos
 const validarDatos = async (datos) => {
@@ -54,6 +84,9 @@ const validarDatos = async (datos) => {
   if (!Number.isInteger(capacidad) || capacidad < 1 || capacidad > 50) {
     return 'La capacidad (personas) debe ser un número entero entre 1 y 50';
   }
+
+  const errorImagenes = validarImagenes(datos.imagenes);
+  if (errorImagenes) return errorImagenes;
 
   const loc = await db.query('SELECT id FROM localidad WHERE id = $1', [localidad_id]);
   if (loc.rows.length === 0) {
@@ -154,6 +187,7 @@ const getCabanasPanel = async (req, res) => {
       `SELECT c.id, c.nombre, c.descripcion,
               c.precio_por_noche::float AS precio_por_noche,
               c.capacidad_personas, c.imagen_url, c.metodos_pago, c.activa, c.created_at,
+              ${IMAGENES} AS imagenes,
               l.id AS localidad_id, l.nombre AS localidad,
               p.id AS provincia_id, p.nombre AS provincia,
               c.admin_id, a.nombre AS dueno_nombre, a.apellido AS dueno_apellido,
@@ -206,27 +240,42 @@ const createCabana = async (req, res) => {
     }
 
     const { nombre, descripcion, localidad_id, precio_por_noche,
-            capacidad_personas, imagen_url, metodos_pago } = req.body;
+            capacidad_personas, imagen_url, metodos_pago, imagenes } = req.body;
 
-    const result = await db.query(
-      `INSERT INTO cabana
-        (nombre, descripcion, localidad_id, precio_por_noche,
-         capacidad_personas, imagen_url, metodos_pago, admin_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id`,
-      [
-        nombre,
-        descripcion,
-        localidad_id,
-        Number(precio_por_noche),
-        Number(capacidad_personas),
-        imagen_url || null,
-        metodos_pago || null,
-        req.user.id
-      ]
-    );
+    const cliente = await db.connect();
+    let nuevoId;
+    try {
+      await cliente.query('BEGIN');
+      const result = await cliente.query(
+        `INSERT INTO cabana
+          (nombre, descripcion, localidad_id, precio_por_noche,
+           capacidad_personas, imagen_url, metodos_pago, admin_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          nombre,
+          descripcion,
+          localidad_id,
+          Number(precio_por_noche),
+          Number(capacidad_personas),
+          imagen_url || null,
+          metodos_pago || null,
+          req.user.id
+        ]
+      );
+      nuevoId = result.rows[0].id;
+      // Si llega la galería se usa; si llega solo imagen_url (versiones anteriores), esa foto es la única
+      const galeria = imagenes !== undefined ? imagenes : (imagen_url ? [imagen_url] : []);
+      await guardarGaleria(cliente, nuevoId, galeria);
+      await cliente.query('COMMIT');
+    } catch (errorTx) {
+      await cliente.query('ROLLBACK');
+      throw errorTx;
+    } finally {
+      cliente.release();
+    }
 
-    res.status(201).json({ message: 'Cabaña creada exitosamente', id: result.rows[0].id });
+    res.status(201).json({ message: 'Cabaña creada exitosamente', id: nuevoId });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error en el servidor' });
@@ -265,28 +314,40 @@ const updateCabana = async (req, res) => {
     }
 
     const { nombre, descripcion, localidad_id, precio_por_noche,
-            capacidad_personas, imagen_url, metodos_pago, activa } = req.body;
+            capacidad_personas, imagen_url, metodos_pago, activa, imagenes } = req.body;
 
-    await db.query(
-      `UPDATE cabana SET
-         nombre = $1, descripcion = $2, localidad_id = $3,
-         precio_por_noche = $4, capacidad_personas = $5,
-         imagen_url = $6, metodos_pago = $7,
-         activa = COALESCE($8, activa),
-         updated_at = NOW()
-       WHERE id = $9`,
-      [
-        nombre,
-        descripcion,
-        localidad_id,
-        Number(precio_por_noche),
-        Number(capacidad_personas),
-        imagen_url || null,
-        metodos_pago || null,
-        activa === undefined ? null : activa,
-        id
-      ]
-    );
+    const cliente = await db.connect();
+    try {
+      await cliente.query('BEGIN');
+      await cliente.query(
+        `UPDATE cabana SET
+           nombre = $1, descripcion = $2, localidad_id = $3,
+           precio_por_noche = $4, capacidad_personas = $5,
+           imagen_url = $6, metodos_pago = $7,
+           activa = COALESCE($8, activa),
+           updated_at = NOW()
+         WHERE id = $9`,
+        [
+          nombre,
+          descripcion,
+          localidad_id,
+          Number(precio_por_noche),
+          Number(capacidad_personas),
+          imagen_url || null,
+          metodos_pago || null,
+          activa === undefined ? null : activa,
+          id
+        ]
+      );
+      // Solo se toca la galería si el pedido la trae (activar o desactivar no la modifica)
+      if (imagenes !== undefined) await guardarGaleria(cliente, id, imagenes);
+      await cliente.query('COMMIT');
+    } catch (errorTx) {
+      await cliente.query('ROLLBACK');
+      throw errorTx;
+    } finally {
+      cliente.release();
+    }
 
     res.json({ message: 'Cabaña actualizada exitosamente' });
   } catch (error) {

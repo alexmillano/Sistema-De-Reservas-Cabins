@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import FormularioReserva from '../components/FormularioReserva';
+import GaleriaDetalle from '../components/GaleriaDetalle';
 import { estrellas } from '../utils/formato';
 
 const POR_PAGINA = 5;
@@ -16,7 +17,6 @@ function Detalle({ id }) {
   const [pagina, setPagina] = useState(1);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [errorMas, setErrorMas] = useState('');
-  const [imagenRota, setImagenRota] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -83,7 +83,7 @@ function Detalle({ id }) {
   }
 
   const { cabana, opiniones, hayMas } = estado;
-  const mostrarImagen = cabana.imagen_url && !imagenRota;
+  const fotos = Array.isArray(cabana.imagenes) && cabana.imagenes.length ? cabana.imagenes : (cabana.imagen_url ? [cabana.imagen_url] : []);
   const metodos = cabana.metodos_pago
     ? cabana.metodos_pago.split(',').map((m) => m.trim()).filter(Boolean)
     : [];
@@ -94,16 +94,7 @@ function Detalle({ id }) {
 
       <div className="detalle-grid">
         <div>
-          {mostrarImagen ? (
-            <img
-              className="detalle-img"
-              src={cabana.imagen_url}
-              alt={cabana.nombre}
-              onError={() => setImagenRota(true)}
-            />
-          ) : (
-            <div className="detalle-img cabana-sin-imagen">Sin imagen</div>
-          )}
+          <GaleriaDetalle fotos={fotos} nombre={cabana.nombre} />
 
           <h1>{cabana.nombre}</h1>
           <p className="cabana-ubicacion">📍 {cabana.localidad}, {cabana.provincia}</p>

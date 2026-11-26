@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { formatearPrecio } from '../utils/formato';
-import SubirImagen from '../components/SubirImagen';
+import GaleriaEditor from '../components/GaleriaEditor';
 
 const MEDIOS_PAGO = ['Efectivo', 'Tarjeta', 'MercadoPago'];
 const MAX_DESCRIPCION = 1000;
 const VACIO = {
   nombre: '', descripcion: '', provincia_id: '', localidad_id: '',
-  precio_por_noche: '', capacidad_personas: '2', imagen_url: '', medios: []
+  precio_por_noche: '', capacidad_personas: '2', imagenes: [], medios: []
 };
 
 export default function FormularioCabana() {
@@ -22,7 +22,6 @@ export default function FormularioCabana() {
   const [errorCarga, setErrorCarga] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [imagenRota, setImagenRota] = useState(false);
 
   // Provincias, y la cabaña a editar si corresponde
   useEffect(() => {
@@ -48,7 +47,7 @@ export default function FormularioCabana() {
               nombre: c.nombre, descripcion: c.descripcion,
               provincia_id: String(c.provincia_id), localidad_id: String(c.localidad_id),
               precio_por_noche: String(c.precio_por_noche), capacidad_personas: String(c.capacidad_personas),
-              imagen_url: c.imagen_url || '',
+              imagenes: Array.isArray(c.imagenes) && c.imagenes.length ? c.imagenes : (c.imagen_url ? [c.imagen_url] : []),
               medios: (c.metodos_pago || '').split(',').map((m) => m.trim()).filter(Boolean)
             });
           }
@@ -65,7 +64,6 @@ export default function FormularioCabana() {
   }, [id, editando]);
 
   const cambiar = (e) => {
-    if (e.target.name === 'imagen_url') setImagenRota(false);
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -110,7 +108,8 @@ export default function FormularioCabana() {
       localidad_id: Number(form.localidad_id),
       precio_por_noche: precio,
       capacidad_personas: capacidad,
-      imagen_url: form.imagen_url.trim() || null,
+      imagen_url: form.imagenes[0] || null,
+      imagenes: form.imagenes,
       metodos_pago: form.medios.join(', ') || null
     };
 
@@ -183,9 +182,8 @@ export default function FormularioCabana() {
           </div>
         </div>
         <div className="campo">
-          <label>Imagen de portada (opcional)</label>
-          <SubirImagen valor={form.imagen_url}
-            onCambio={(url) => { setImagenRota(false); setForm((f) => ({ ...f, imagen_url: url })); }} />
+          <label>Fotos de la cabaña (opcional, hasta 10)</label>
+          <GaleriaEditor fotos={form.imagenes} onCambio={(fotos) => setForm((f) => ({ ...f, imagenes: fotos }))} />
         </div>
 
         <fieldset className="medios-pago">
@@ -199,9 +197,8 @@ export default function FormularioCabana() {
 
         <h2>Vista previa en el catálogo</h2>
         <article className="item-carrito tarjeta vista-previa">
-          {form.imagen_url && !imagenRota ? (
-            <img className="cabana-img" src={form.imagen_url} alt="Vista previa"
-              onError={() => setImagenRota(true)} />
+          {form.imagenes[0] ? (
+            <img className="cabana-img" src={form.imagenes[0]} alt="Vista previa" />
           ) : (
             <div className="cabana-img cabana-sin-imagen">Sin imagen</div>
           )}

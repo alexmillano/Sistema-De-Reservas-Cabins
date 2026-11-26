@@ -85,6 +85,16 @@ CREATE TABLE cabana (
 CREATE INDEX idx_cabana_admin ON cabana (admin_id);
 CREATE INDEX idx_cabana_localidad ON cabana (localidad_id);
 
+-- Galería: hasta 10 fotos por cabaña. cabana.imagen_url es la portada (la primera).
+CREATE TABLE cabana_imagen (
+  id          SERIAL PRIMARY KEY,
+  cabana_id   INTEGER NOT NULL REFERENCES cabana(id) ON DELETE CASCADE,
+  url         VARCHAR(500) NOT NULL,
+  orden       INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_cabana_imagen_cabana ON cabana_imagen (cabana_id, orden);
+
 -- Plan contratado por cabaña (Free = sin fila). Dura 30 días.
 CREATE TABLE plan_cabana (
   id           SERIAL PRIMARY KEY,
@@ -245,6 +255,7 @@ CREATE INDEX idx_recuperacion_cuenta ON recuperacion_clave (rol, cuenta_id, crea
 ALTER TABLE provincia          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE localidad          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cabana_imagen      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE usuario            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cabana             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plan_cabana        ENABLE ROW LEVEL SECURITY;
