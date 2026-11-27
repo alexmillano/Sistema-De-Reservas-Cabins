@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
-const { validarCuenta, validarPassword, armarSet, validarMotivo } = require('../utils/validaciones');
+const { validarCuenta, validarPassword, armarSet, validarMotivo, validarDni, validarTelefono } = require('../utils/validaciones');
+const { subirDocumento, borrarDocumento, urlFirmada } = require('../utils/almacenamiento');
 const { hoy } = require('../utils/reservas');
 
 const errorHttp = (status, message) => Object.assign(new Error(message), { status });
@@ -24,7 +25,8 @@ const idValido = (valor) =>
 const listarAdmins = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, nombre, apellido, email, usuario, es_superadmin,
+      `SELECT id, nombre, apellido, email, usuario, es_superadmin, dni, telefono,
+              (dni_frente_ruta IS NOT NULL AND dni_dorso_ruta IS NOT NULL) AS tiene_dni_fotos,
               baneado, motivo_baneo, baneado_at, created_at
        FROM admin
        ORDER BY es_superadmin DESC, nombre`
@@ -36,8 +38,10 @@ const listarAdmins = async (req, res) => {
 };
 
 // ---------- SUPERADMIN: crear un administrador (CU-30) ----------
+// Llega como formulario multipart: datos de texto + fotos del DNI (frente y dorso)
 const crearAdmin = async (req, res) => {
   const body = req.body || {};
+  const subidas = [];
 
   const { error, valores } = validarCuenta(body, true);
   if (error) {
@@ -46,6 +50,19 @@ const crearAdmin = async (req, res) => {
   const errorPassword = validarPassword(body.password);
   if (errorPassword) {
     return res.status(400).json({ message: errorPassword });
+  }
+  const { error: errorDni, dni } = validarDni(body.dni);
+  if (errorDni) {
+    return res.status(400).json({ message: errorDni });
+  }
+  const { error: errorTel, telefono } = validarTelefono(body.telefono);
+  if (errorTel) {
+    return res.status(400).json({ message: errorTel });
+  }
+  const frente = req.files?.dni_frente?.[0];
+  const dorso = req.files?.dni_dorso?.[0];
+  if (!frente || !dorso) {
+    return res.status(400).json({ message: 'Subí la foto del DNI por delante y por detrás' });
   }
   if (typeof body.llave_maestra !== 'string' || !body.llave_maestra) {
     return res.status(400).json({ message: 'La llave maestra es obligatoria' });
@@ -61,22 +78,56 @@ const crearAdmin = async (req, res) => {
     }
 
     const existente = await db.query(
-      'SELECT 1 FROM admin WHERE email = $1 OR usuario = $2',
-      [valores.email, valores.usuario]
+      'SELECT email, usuario, dni FROM admin WHERE email = $1 OR usuario = $2 OR dni = $3',
+      [valores.email, valores.usuario, dni]
     );
+    if (existente.rows.some((a) => a.dni === dni)) {
+      return res.status(409).json({ message: 'Ya existe un dueño con ese DNI' });
+    }
     if (existente.rows.length > 0) {
       return res.status(409).json({ message: 'El email o el usuario ya están en uso' });
     }
 
+    // Las fotos van al bucket privado; si algo falla después se borran para no dejar archivos sueltos
+    const rutaFrente = await subirDocumento(frente.buffer, 'dni');
+    subidas.push(rutaFrente);
+    const rutaDorso = await subirDocumento(dorso.buffer, 'dni');
+    subidas.push(rutaDorso);
+
     const hash = await bcrypt.hash(body.password, 10);
     const nuevo = await db.query(
-      `INSERT INTO admin (nombre, apellido, email, usuario, password, fecha_nacimiento, es_superadmin)
-       VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+      `INSERT INTO admin (nombre, apellido, email, usuario, password, fecha_nacimiento, es_superadmin,
+                          dni, telefono, dni_frente_ruta, dni_dorso_ruta)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9, $10)
        RETURNING id, nombre, apellido, email, usuario, es_superadmin, created_at`,
-      [valores.nombre, valores.apellido, valores.email, valores.usuario, hash, valores.fecha_nacimiento ?? null]
+      [valores.nombre, valores.apellido, valores.email, valores.usuario, hash, valores.fecha_nacimiento ?? null,
+       dni, telefono, rutaFrente, rutaDorso]
     );
 
-    res.status(201).json({ message: 'Administrador creado exitosamente', admin: nuevo.rows[0] });
+    res.status(201).json({ message: 'Dueño creado exitosamente', admin: nuevo.rows[0] });
+  } catch (error) {
+    await Promise.all(subidas.map((r) => borrarDocumento(r)));
+    responderError(res, error);
+  }
+};
+
+// ---------- SUPERADMIN: ver las fotos del DNI de un dueño (enlaces temporales) ----------
+const verDniAdmin = async (req, res) => {
+  const { id } = req.params;
+  if (!idValido(id)) {
+    return res.status(400).json({ message: 'El id debe ser un número entero' });
+  }
+  try {
+    const r = await db.query('SELECT dni, dni_frente_ruta, dni_dorso_ruta FROM admin WHERE id = $1', [id]);
+    if (r.rows.length === 0) {
+      return res.status(404).json({ message: 'Dueño no encontrado' });
+    }
+    const { dni, dni_frente_ruta: f, dni_dorso_ruta: d } = r.rows[0];
+    res.json({
+      dni,
+      frente: f ? await urlFirmada(f).catch(() => null) : null,
+      dorso: d ? await urlFirmada(d).catch(() => null) : null
+    });
   } catch (error) {
     responderError(res, error);
   }
@@ -95,6 +146,14 @@ const editarAdmin = async (req, res) => {
     return res.status(400).json({ message: error });
   }
 
+  if (body.telefono !== undefined) {
+    const { error: errorTel, telefono } = validarTelefono(body.telefono);
+    if (errorTel) {
+      return res.status(400).json({ message: errorTel });
+    }
+    valores.telefono = telefono;
+  }
+
   const cambiaPassword = body.password !== undefined;
   if (cambiaPassword) {
     const errorPassword = validarPassword(body.password);
@@ -109,7 +168,7 @@ const editarAdmin = async (req, res) => {
   try {
     const destino = await db.query('SELECT es_superadmin FROM admin WHERE id = $1', [id]);
     if (destino.rows.length === 0) {
-      return res.status(404).json({ message: 'Administrador no encontrado' });
+      return res.status(404).json({ message: 'Dueño no encontrado' });
     }
     if (destino.rows[0].es_superadmin) {
       return res.status(403).json({ message: 'Las cuentas de superadmin no se modifican desde acá. Usá tu perfil' });
@@ -137,7 +196,7 @@ const editarAdmin = async (req, res) => {
       params
     );
 
-    res.json({ message: 'Administrador actualizado exitosamente' });
+    res.json({ message: 'Dueño actualizado exitosamente' });
   } catch (error) {
     responderError(res, error);
   }
@@ -161,7 +220,7 @@ const banearAdmin = async (req, res) => {
   try {
     const destino = await db.query('SELECT es_superadmin, baneado FROM admin WHERE id = $1', [id]);
     if (destino.rows.length === 0) {
-      return res.status(404).json({ message: 'Administrador no encontrado' });
+      return res.status(404).json({ message: 'Dueño no encontrado' });
     }
     if (destino.rows[0].es_superadmin) {
       return res.status(403).json({ message: 'No se puede suspender una cuenta de superadmin' });
@@ -177,7 +236,7 @@ const banearAdmin = async (req, res) => {
       [motivo, id]
     );
 
-    res.json({ message: 'Administrador suspendido. Perdió el acceso; sus cabañas se ocultan hasta que lo reactives' });
+    res.json({ message: 'Dueño suspendido. Perdió el acceso; sus cabañas se ocultan hasta que lo reactives' });
   } catch (error) {
     responderError(res, error);
   }
@@ -193,7 +252,7 @@ const desbanearAdmin = async (req, res) => {
   try {
     const destino = await db.query('SELECT baneado FROM admin WHERE id = $1', [id]);
     if (destino.rows.length === 0) {
-      return res.status(404).json({ message: 'Administrador no encontrado' });
+      return res.status(404).json({ message: 'Dueño no encontrado' });
     }
     if (!destino.rows[0].baneado) {
       return res.status(409).json({ message: 'La cuenta no está suspendida' });
@@ -206,7 +265,7 @@ const desbanearAdmin = async (req, res) => {
       [id]
     );
 
-    res.json({ message: 'Administrador reactivado' });
+    res.json({ message: 'Dueño reactivado' });
   } catch (error) {
     responderError(res, error);
   }
@@ -232,7 +291,7 @@ const eliminarAdmin = async (req, res) => {
       [id]
     );
     if (destino.rows.length === 0) {
-      throw errorHttp(404, 'Administrador no encontrado');
+      throw errorHttp(404, 'Dueño no encontrado');
     }
     if (destino.rows[0].es_superadmin) {
       throw errorHttp(403, 'No se puede eliminar una cuenta de superadmin');
@@ -279,11 +338,16 @@ const eliminarAdmin = async (req, res) => {
       [id]
     );
 
+    // Al eliminar la cuenta también se borran las fotos de su DNI (dato personal sensible)
+    const fotos = await client.query('SELECT dni_frente_ruta, dni_dorso_ruta FROM admin WHERE id = $1', [id]);
     await client.query('DELETE FROM admin WHERE id = $1', [id]);
 
     await client.query('COMMIT');
+    for (const ruta of [fotos.rows[0]?.dni_frente_ruta, fotos.rows[0]?.dni_dorso_ruta]) {
+      if (ruta) await borrarDocumento(ruta);
+    }
     res.json({
-      message: 'Administrador eliminado definitivamente',
+      message: 'Dueño eliminado definitivamente',
       cabanas_eliminadas: eliminadas.rowCount,
       cabanas_desactivadas: desactivadas.rowCount,
       reservas_canceladas: canceladas.rowCount
@@ -297,5 +361,5 @@ const eliminarAdmin = async (req, res) => {
 };
 
 module.exports = {
-  listarAdmins, crearAdmin, editarAdmin, banearAdmin, desbanearAdmin, eliminarAdmin
+  listarAdmins, crearAdmin, verDniAdmin, editarAdmin, banearAdmin, desbanearAdmin, eliminarAdmin
 };

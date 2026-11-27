@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { contarNoches, formatearFechaCorta } from '../utils/fechas';
+import { contarNoches, formatearFechaCorta, maxNacimiento } from '../utils/fechas';
 
-const CAMPOS_VACIOS = { nombre: '', apellido: '', email: '', usuario: '', fecha_nacimiento: '' };
+const CAMPOS_VACIOS = { email: '', usuario: '', fecha_nacimiento: '', telefono: '', dni: '' };
 
 const aFormulario = (p) => ({
-  nombre: p.nombre, apellido: p.apellido, email: p.email, usuario: p.usuario,
-  fecha_nacimiento: p.fecha_nacimiento || ''
+  email: p.email, usuario: p.usuario, fecha_nacimiento: p.fecha_nacimiento || '',
+  telefono: p.telefono || '', dni: p.dni || ''
 });
 
 export default function Perfil() {
@@ -63,13 +63,15 @@ export default function Perfil() {
     setMsg({ tipo: '', texto: '' });
     setGuardando(true);
     try {
-      const { data } = await api.put('/perfil', { ...form, fecha_nacimiento: form.fecha_nacimiento || null });
+      // Nombre, apellido y DNI ya cargado no se editan: solo se envía lo que se puede cambiar
+      const cuerpo = { email: form.email, usuario: form.usuario };
+      if (!perfil.fecha_nacimiento && form.fecha_nacimiento) cuerpo.fecha_nacimiento = form.fecha_nacimiento;
+      if (perfil.rol === 'admin' && form.telefono) cuerpo.telefono = form.telefono;
+      if (!perfil.dni && form.dni) cuerpo.dni = form.dni;
+      const { data } = await api.put('/perfil', cuerpo);
       setPerfil(data.perfil);
       setForm(aFormulario(data.perfil));
-      actualizarUsuario({
-        nombre: data.perfil.nombre, apellido: data.perfil.apellido,
-        email: data.perfil.email, usuario: data.perfil.usuario
-      });
+      actualizarUsuario({ email: data.perfil.email, usuario: data.perfil.usuario });
       setMsg({ tipo: 'exito', texto: 'Datos actualizados correctamente.' });
     } catch (err) {
       setMsg({ tipo: 'error', texto: mensajeError(err) });
@@ -195,26 +197,50 @@ export default function Perfil() {
           <div className="form-fila">
             <div className="campo">
               <label htmlFor="p-nombre">Nombre</label>
-              <input id="p-nombre" name="nombre" maxLength={100} value={form.nombre} onChange={cambiar} required />
+              <input id="p-nombre" value={perfil.nombre} disabled readOnly />
             </div>
             <div className="campo">
               <label htmlFor="p-apellido">Apellido</label>
-              <input id="p-apellido" name="apellido" maxLength={100} value={form.apellido} onChange={cambiar} required />
+              <input id="p-apellido" value={perfil.apellido} disabled readOnly />
             </div>
+          </div>
+          <div className="campo">
+            <label htmlFor="p-dni">DNI</label>
+            {perfil.dni ? (
+              <input id="p-dni" value={perfil.dni} disabled readOnly />
+            ) : (
+              <input id="p-dni" name="dni" inputMode="numeric" maxLength={8} placeholder="Cargalo una sola vez"
+                value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value.replace(/\D/g, '') })} />
+            )}
+            <small className="texto-suave">
+              {perfil.dni ? 'Nombre, apellido, DNI y fecha de nacimiento no se pueden modificar. Si hay un error, contactá a soporte.'
+                : 'Una vez cargado, el DNI no se puede modificar.'}
+            </small>
           </div>
           <div className="campo">
             <label htmlFor="p-email">Correo electrónico</label>
             <input id="p-email" name="email" type="email" maxLength={150} value={form.email} onChange={cambiar} required />
           </div>
+          {perfil.rol === 'admin' && (
+            <div className="campo">
+              <label htmlFor="p-tel">Teléfono</label>
+              <input id="p-tel" name="telefono" type="tel" maxLength={25} placeholder="+54 11 5555-1234"
+                value={form.telefono} onChange={cambiar} />
+            </div>
+          )}
           <div className="form-fila">
             <div className="campo">
               <label htmlFor="p-usuario">Usuario</label>
               <input id="p-usuario" name="usuario" maxLength={50} value={form.usuario} onChange={cambiar} required />
             </div>
             <div className="campo">
-              <label htmlFor="p-nac">Fecha de nacimiento (opcional)</label>
-              <input id="p-nac" name="fecha_nacimiento" type="date" min="1900-01-01"
-                value={form.fecha_nacimiento} onChange={cambiar} />
+              <label htmlFor="p-nac">Fecha de nacimiento</label>
+              {perfil.fecha_nacimiento ? (
+                <input id="p-nac" type="date" value={perfil.fecha_nacimiento} disabled readOnly />
+              ) : (
+                <input id="p-nac" name="fecha_nacimiento" type="date" min="1900-01-01" max={maxNacimiento()}
+                  value={form.fecha_nacimiento} onChange={cambiar} />
+              )}
             </div>
           </div>
           {msg.texto && <div className={msg.tipo === 'exito' ? 'mensaje-exito' : 'mensaje-error'} role="status">{msg.texto}</div>}

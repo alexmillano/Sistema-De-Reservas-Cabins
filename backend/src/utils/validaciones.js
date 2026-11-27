@@ -2,8 +2,37 @@ const { esFechaValida, hoy } = require('./reservas');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USUARIO_REGEX = /^[A-Za-z0-9._-]{3,50}$/;
-const COLUMNAS_EDITABLES = ['nombre', 'apellido', 'email', 'usuario', 'fecha_nacimiento'];
+const COLUMNAS_EDITABLES = ['nombre', 'apellido', 'email', 'usuario', 'fecha_nacimiento', 'dni', 'telefono'];
 const MAX_MOTIVO = 500;
+
+// DNI argentino: solo números, 7 u 8 dígitos (se aceptan puntos y espacios al escribirlo, se guardan sin ellos)
+const normalizarDni = (valor) => String(valor ?? '').replace(/[.\s]/g, '');
+const validarDni = (valor) => {
+  const v = normalizarDni(valor);
+  if (!/^[0-9]{7,8}$/.test(v)) return { error: 'El DNI debe tener 7 u 8 números, sin puntos ni letras' };
+  return { dni: v };
+};
+
+// Teléfono: dígitos con +, espacios, guiones o paréntesis; al menos 8 dígitos
+const validarTelefono = (valor) => {
+  const v = typeof valor === 'string' ? valor.trim() : '';
+  const digitos = v.replace(/\D/g, '').length;
+  if (!/^[0-9+()\-\s]{8,25}$/.test(v) || digitos < 8 || digitos > 15) {
+    return { error: 'El teléfono no es válido (ejemplo: +54 11 5555-1234)' };
+  }
+  return { telefono: v };
+};
+
+// Fecha de nacimiento obligatoria (AAAA-MM-DD) y mayoría de edad (18 años cumplidos)
+const validarFechaNacimiento = (valor) => {
+  if (!esFechaValida(valor) || valor < '1900-01-01' || valor > hoy()) {
+    return { error: 'La fecha de nacimiento es obligatoria y debe tener el formato AAAA-MM-DD' };
+  }
+  const h = hoy();
+  const limite = `${Number(h.slice(0, 4)) - 18}${h.slice(4)}`;
+  if (valor > limite) return { error: 'Tenés que ser mayor de 18 años para usar Cabins' };
+  return { fecha: valor };
+};
 
 const texto = (valor) => (typeof valor === 'string' ? valor.trim() : '');
 
@@ -39,17 +68,11 @@ const validarCuenta = (body, completo) => {
     valores.usuario = v;
   }
 
-  // La fecha de nacimiento siempre es opcional; null o vacío la borra
-  if (b.fecha_nacimiento !== undefined) {
-    if (b.fecha_nacimiento === null || b.fecha_nacimiento === '') {
-      valores.fecha_nacimiento = null;
-    } else if (!esFechaValida(b.fecha_nacimiento) ||
-               b.fecha_nacimiento > hoy() ||
-               b.fecha_nacimiento < '1900-01-01') {
-      return { error: 'La fecha de nacimiento no es válida (formato AAAA-MM-DD)' };
-    } else {
-      valores.fecha_nacimiento = b.fecha_nacimiento;
-    }
+  // Fecha de nacimiento: obligatoria al crear la cuenta, y la persona debe ser mayor de 18 años
+  if (completo || b.fecha_nacimiento !== undefined) {
+    const r = validarFechaNacimiento(b.fecha_nacimiento);
+    if (r.error) return { error: r.error };
+    valores.fecha_nacimiento = r.fecha;
   }
 
   return { valores };
@@ -84,4 +107,4 @@ const validarMotivo = (valor) => {
   return { motivo: valor.trim() };
 };
 
-module.exports = { validarCuenta, validarPassword, armarSet, validarMotivo };
+module.exports = { validarFechaNacimiento, validarDni, validarTelefono, validarCuenta, validarPassword, armarSet, validarMotivo };

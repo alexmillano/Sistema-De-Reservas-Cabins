@@ -623,3 +623,6 @@ h1, h2, h3 { color: var(--marron); line-height: 1.2; }
 .revision-fotos { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.5rem 0; }
 .revision-fotos img { height: 110px; border-radius: 8px; flex: 0 0 auto; object-fit: cover; }
 .revision-docs { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.75rem 0; }
+
+.dni-fotos { display: grid; gap: 0.75rem; margin: 0.75rem 0; }
+.dni-fotos img { width: 100%; border-radius: 10px; border: 1px solid #e3d6c3; }

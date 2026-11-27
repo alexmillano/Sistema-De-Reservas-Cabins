@@ -45,8 +45,13 @@ CREATE TABLE admin (
   baneado           BOOLEAN NOT NULL DEFAULT FALSE,
   motivo_baneo      VARCHAR(500),
   baneado_at        TIMESTAMP,
-  foto_url          TEXT                            -- foto de perfil (opcional)
+  foto_url          TEXT,                           -- foto de perfil (opcional)
+  dni               VARCHAR(8) CHECK (dni IS NULL OR dni ~ '^[0-9]{7,8}$'),
+  telefono          VARCHAR(25),
+  dni_frente_ruta   VARCHAR(300),                   -- foto del DNI en el bucket privado
+  dni_dorso_ruta    VARCHAR(300)
 );
+CREATE UNIQUE INDEX uq_admin_dni ON admin (dni) WHERE dni IS NOT NULL;
 
 -- usuario = huésped
 CREATE TABLE usuario (
@@ -62,8 +67,10 @@ CREATE TABLE usuario (
   baneado           BOOLEAN NOT NULL DEFAULT FALSE,
   motivo_baneo      VARCHAR(500),
   baneado_at        TIMESTAMP,
-  foto_url          TEXT                            -- foto de perfil (opcional)
+  foto_url          TEXT,                           -- foto de perfil (opcional)
+  dni               VARCHAR(8) CHECK (dni IS NULL OR dni ~ '^[0-9]{7,8}$')
 );
+CREATE UNIQUE INDEX uq_usuario_dni ON usuario (dni) WHERE dni IS NOT NULL;
 
 -- ---------------------------------------------------------------------
 -- Cabañas
@@ -247,7 +254,7 @@ CREATE TABLE notificacion (
   created_at  TIMESTAMP DEFAULT NOW(),
   reserva_id  INTEGER REFERENCES reserva(id) ON DELETE CASCADE,
   CONSTRAINT chk_notificacion_tipo CHECK (tipo IN
-    ('nueva_reserva', 'reclamo', 'cancelacion', 'opinion', 'pago_aprobado', 'checkout', 'plan', 'revision'))
+    ('nueva_reserva', 'reclamo', 'cancelacion', 'opinion', 'pago_aprobado', 'checkout', 'plan', 'revision', 'revision_pendiente'))
 );
 -- Una sola notificación de checkout por reserva y dueño
 CREATE UNIQUE INDEX uq_notif_checkout ON notificacion (admin_id, reserva_id) WHERE tipo = 'checkout';

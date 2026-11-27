@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { validarDni, validarFechaNacimiento } = require('../utils/validaciones');
 
 const generarToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -9,11 +10,19 @@ const generarToken = (payload) =>
 
 const register = async (req, res) => {
   const { nombre, apellido, email, usuario, password, fecha_nacimiento } = req.body;
+  const { error: errorDni, dni } = validarDni(req.body.dni);
+  const { error: errorFecha, fecha } = validarFechaNacimiento(fecha_nacimiento);
 
   if (!nombre || !apellido || !email || !usuario || !password) {
     return res.status(400).json({
       message: 'Nombre, apellido, email, usuario y contraseña son obligatorios'
     });
+  }
+  if (errorDni) {
+    return res.status(400).json({ message: errorDni });
+  }
+  if (errorFecha) {
+    return res.status(400).json({ message: errorFecha });
   }
   if (password.length < 8) {
     return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
@@ -21,18 +30,21 @@ const register = async (req, res) => {
 
   try {
     const existente = await db.query(
-      'SELECT id FROM usuario WHERE email = $1 OR usuario = $2',
-      [email, usuario]
+      'SELECT id, dni FROM usuario WHERE email = $1 OR usuario = $2 OR dni = $3',
+      [email, usuario, dni]
     );
     if (existente.rows.length > 0) {
+      if (existente.rows.some((u) => u.dni === dni)) {
+        return res.status(400).json({ message: 'Ya existe una cuenta registrada con ese DNI' });
+      }
       return res.status(400).json({ message: 'El email o el usuario ya están registrados' });
     }
 
     const hash = await bcrypt.hash(password, 10);
     await db.query(
-      `INSERT INTO usuario (nombre, apellido, email, usuario, password, fecha_nacimiento)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [nombre, apellido, email, usuario, hash, fecha_nacimiento || null]
+      `INSERT INTO usuario (nombre, apellido, email, usuario, password, fecha_nacimiento, dni)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [nombre, apellido, email, usuario, hash, fecha, dni]
     );
 
     res.status(201).json({ message: 'Usuario registrado exitosamente' });

@@ -21,3 +21,13 @@ export const aIso = (anio, mes, dia) =>
 
 // mm:ss de una cuenta regresiva
 export const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+// Verifica que la fecha AAAA-MM-DD exista y que la persona tenga 18 años cumplidos
+export const esMayorDeEdad = (iso) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return false;
+  const [a, m, d] = iso.split('-').map(Number);
+  const f = new Date(a, m - 1, d);
+  if (f.getFullYear() !== a || f.getMonth() !== m - 1 || f.getDate() !== d || a < 1900) return false;
+  const h = new Date();
+  return new Date(a + 18, m - 1, d) <= new Date(h.getFullYear(), h.getMonth(), h.getDate());
+};

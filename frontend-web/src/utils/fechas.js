@@ -14,3 +14,9 @@ export const formatearFechaCorta = (iso) => {
   const [anio, mes, dia] = iso.split('-');
   return `${dia}/${mes}/${anio}`;
 };
+// Fecha máxima de nacimiento para ser mayor de 18 años hoy (AAAA-MM-DD)
+export const maxNacimiento = () => {
+  const h = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${h.getFullYear() - 18}-${p(h.getMonth() + 1)}-${p(h.getDate())}`;
+};

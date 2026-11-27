@@ -5,11 +5,11 @@ import api, { mensajeError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Aviso, Boton, Campo } from '../components/Ui';
 import { colores } from '../theme/colores';
-import { contarNoches, formatearFechaCorta } from '../utils/fechas';
+import { contarNoches, formatearFechaCorta, esMayorDeEdad } from '../utils/fechas';
 import AvoidTeclado from '../components/AvoidTeclado';
 
 const aFormulario = (p) => ({
-  nombre: p.nombre, apellido: p.apellido, email: p.email, usuario: p.usuario,
+  email: p.email, usuario: p.usuario, telefono: p.telefono || '', dni: p.dni || '',
   fecha_nacimiento: p.fecha_nacimiento ? String(p.fecha_nacimiento).slice(0, 10) : ''
 });
 
@@ -86,15 +86,20 @@ export default function Perfil({ enStack }) {
 
   const guardar = async () => {
     setMsg({ tipo: '', texto: '' });
-    if (form.fecha_nacimiento && !/^\d{4}-\d{2}-\d{2}$/.test(form.fecha_nacimiento)) {
-      return setMsg({ tipo: 'error', texto: 'La fecha de nacimiento debe tener el formato AAAA-MM-DD' });
+    if (!perfil.fecha_nacimiento && form.fecha_nacimiento && !esMayorDeEdad(form.fecha_nacimiento)) {
+      return setMsg({ tipo: 'error', texto: 'La fecha de nacimiento debe tener el formato AAAA-MM-DD y ser mayor de 18 años' });
     }
     setGuardando(true);
     try {
-      const { data } = await api.put('/perfil', { ...form, fecha_nacimiento: form.fecha_nacimiento || null });
+      // Nombre, apellido y DNI ya cargado no se editan: solo se envía lo que se puede cambiar
+      const cuerpo = { email: form.email, usuario: form.usuario };
+      if (!perfil.fecha_nacimiento && form.fecha_nacimiento) cuerpo.fecha_nacimiento = form.fecha_nacimiento;
+      if (perfil.rol === 'admin' && form.telefono) cuerpo.telefono = form.telefono;
+      if (!perfil.dni && form.dni) cuerpo.dni = form.dni;
+      const { data } = await api.put('/perfil', cuerpo);
       setPerfil(data.perfil);
       setForm(aFormulario(data.perfil));
-      await actualizarUsuario({ nombre: data.perfil.nombre, apellido: data.perfil.apellido, email: data.perfil.email, usuario: data.perfil.usuario });
+      await actualizarUsuario({ email: data.perfil.email, usuario: data.perfil.usuario });
       setMsg({ tipo: 'exito', texto: 'Datos actualizados correctamente.' });
     } catch (err) {
       setMsg({ tipo: 'error', texto: mensajeError(err) });
@@ -167,12 +172,29 @@ export default function Perfil({ enStack }) {
         {pestana === 'datos' && (
           <View style={estilos.tarjeta}>
             <Text style={estilos.subtitulo}>Información personal</Text>
-            <Campo etiqueta="Nombre" value={form.nombre} onChangeText={set('nombre')} autoCapitalize="words" maxLength={100} />
-            <Campo etiqueta="Apellido" value={form.apellido} onChangeText={set('apellido')} autoCapitalize="words" maxLength={100} />
+            <Campo etiqueta="Nombre" value={perfil.nombre} editable={false} style={estilos.bloqueado} />
+            <Campo etiqueta="Apellido" value={perfil.apellido} editable={false} style={estilos.bloqueado} />
+            {perfil.dni ? (
+              <Campo etiqueta="DNI" value={perfil.dni} editable={false} style={estilos.bloqueado} />
+            ) : (
+              <Campo etiqueta="DNI (cargalo una sola vez)" value={form.dni} onChangeText={(v) => set('dni')(v.replace(/\D/g, ''))}
+                keyboardType="number-pad" maxLength={8} />
+            )}
+            <Text style={estilos.nota}>
+              {perfil.dni ? 'Nombre, apellido, DNI y fecha de nacimiento no se pueden modificar. Si hay un error, contactá a soporte.'
+                : 'Nombre y apellido no se pueden modificar. Una vez cargado, el DNI tampoco.'}
+            </Text>
+            {perfil.rol === 'admin' && (
+              <Campo etiqueta="Teléfono" value={form.telefono} onChangeText={set('telefono')} keyboardType="phone-pad" maxLength={25} placeholder="+54 11 5555-1234" />
+            )}
             <Campo etiqueta="Correo electrónico" value={form.email} onChangeText={set('email')} keyboardType="email-address" maxLength={150} />
             <Campo etiqueta="Usuario" value={form.usuario} onChangeText={set('usuario')} maxLength={50} />
-            <Campo etiqueta="Fecha de nacimiento (opcional, AAAA-MM-DD)" value={form.fecha_nacimiento} onChangeText={set('fecha_nacimiento')}
-              placeholder="1999-05-21" keyboardType="numbers-and-punctuation" />
+            {perfil.fecha_nacimiento ? (
+              <Campo etiqueta="Fecha de nacimiento" value={String(perfil.fecha_nacimiento).slice(0, 10)} editable={false} style={estilos.bloqueado} />
+            ) : (
+              <Campo etiqueta="Fecha de nacimiento (AAAA-MM-DD, cargala una sola vez)" value={form.fecha_nacimiento} onChangeText={set('fecha_nacimiento')}
+                placeholder="1999-05-21" keyboardType="numbers-and-punctuation" />
+            )}
             <Aviso tipo={msg.tipo === 'exito' ? 'exito' : 'error'} texto={msg.texto} />
             <Boton titulo="Guardar cambios" onPress={guardar} cargando={guardando} />
           </View>
@@ -203,6 +225,8 @@ const estilos = StyleSheet.create({
   fotoAcciones: { flexDirection: 'row', gap: 18, marginBottom: 8 },
   fotoLink: { color: colores.primario, fontWeight: '700', fontSize: 13 },
   avatarTexto: { color: '#fff', fontSize: 26, fontWeight: '800' },
+  bloqueado: { backgroundColor: '#efe7da', color: colores.textoSuave },
+  nota: { color: colores.textoSuave, fontSize: 12.5, marginBottom: 10 },
   nombre: { fontSize: 22, fontWeight: '800', color: colores.texto },
   dato: { color: colores.texto, marginTop: 2 },
   suave: { color: colores.textoSuave, fontSize: 12, marginTop: 2 },

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { mensajeError } from '../api/client';
+import { maxNacimiento } from '../utils/fechas';
 
 const VACIO = {
-  nombre: '', apellido: '', email: '', usuario: '',
+  nombre: '', apellido: '', dni: '', email: '', usuario: '',
   password: '', confirmar: '', fecha_nacimiento: ''
 };
 
@@ -23,6 +24,14 @@ export default function Registro() {
     e.preventDefault();
     setError('');
 
+    if (!/^[0-9]{7,8}$/.test(form.dni)) {
+      setError('El DNI debe tener 7 u 8 números, sin puntos.');
+      return;
+    }
+    if (!form.fecha_nacimiento || form.fecha_nacimiento > maxNacimiento()) {
+      setError('Ingresá tu fecha de nacimiento: tenés que ser mayor de 18 años.');
+      return;
+    }
     if (form.password !== form.confirmar) {
       setError('Las contraseñas no coinciden');
       return;
@@ -33,10 +42,11 @@ export default function Registro() {
       await api.post('/auth/register', {
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
+        dni: form.dni,
         email: form.email.trim(),
         usuario: form.usuario.trim(),
         password: form.password,
-        fecha_nacimiento: form.fecha_nacimiento || undefined
+        fecha_nacimiento: form.fecha_nacimiento
       });
       navigate('/login', { state: { registrado: true } });
     } catch (err) {
@@ -61,6 +71,11 @@ export default function Registro() {
           <input id="apellido" name="apellido" value={form.apellido} onChange={cambiar} required />
         </div>
         <div className="campo">
+          <label htmlFor="dni">DNI (solo números)</label>
+          <input id="dni" name="dni" inputMode="numeric" maxLength={8} value={form.dni}
+            onChange={(e) => setForm({ ...form, dni: e.target.value.replace(/\D/g, '') })} required />
+        </div>
+        <div className="campo">
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" value={form.email} onChange={cambiar} required />
         </div>
@@ -69,10 +84,10 @@ export default function Registro() {
           <input id="usuario" name="usuario" value={form.usuario} onChange={cambiar} required />
         </div>
         <div className="campo">
-          <label htmlFor="fecha_nacimiento">Fecha de nacimiento (opcional)</label>
+          <label htmlFor="fecha_nacimiento">Fecha de nacimiento (mayor de 18 años)</label>
           <input
-            id="fecha_nacimiento" name="fecha_nacimiento" type="date"
-            value={form.fecha_nacimiento} onChange={cambiar}
+            id="fecha_nacimiento" name="fecha_nacimiento" type="date" min="1900-01-01" max={maxNacimiento()}
+            value={form.fecha_nacimiento} onChange={cambiar} required
           />
         </div>
         <div className="campo">

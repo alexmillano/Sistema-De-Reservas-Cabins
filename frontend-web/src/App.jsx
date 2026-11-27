@@ -20,7 +20,7 @@ import Reclamos from './pages/Reclamos';
 import Finanzas from './pages/Finanzas';
 import Calificaciones from './pages/Calificaciones';
 import Opiniones from './pages/Opiniones';
-import Administradores from './pages/Administradores';
+import Duenos from './pages/Duenos';
 import Usuarios from './pages/Usuarios';
 import Planes from './pages/Planes';
 import RevisionCabanas from './pages/RevisionCabanas';
@@ -66,7 +66,7 @@ export default function App() {
             </Route>
 
             <Route element={<ProtectedRoute roles={['admin']} superadmin />}>
-              <Route path="admin/admins" element={<Administradores />} />
+              <Route path="admin/duenos" element={<Duenos />} />
               <Route path="admin/usuarios" element={<Usuarios />} />
               <Route path="admin/revision" element={<RevisionCabanas />} />
             </Route>

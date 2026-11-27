@@ -1,23 +1,23 @@
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
-const { validarCuenta, validarPassword, armarSet } = require('../utils/validaciones');
+const { validarCuenta, validarPassword, armarSet, validarDni, validarTelefono } = require('../utils/validaciones');
 const { subirImagen } = require('../utils/almacenamiento');
 
 // La tabla sale del rol firmado en el token, nunca de lo que manda el cliente
 const TABLAS = { usuario: 'usuario', admin: 'admin' };
 
 const SELECT_PERFIL = {
-  usuario: `SELECT id, nombre, apellido, email, usuario, foto_url,
+  usuario: `SELECT id, nombre, apellido, email, usuario, foto_url, dni,
                    to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, created_at
             FROM usuario WHERE id = $1`,
-  admin: `SELECT id, nombre, apellido, email, usuario, es_superadmin, foto_url,
+  admin: `SELECT id, nombre, apellido, email, usuario, es_superadmin, foto_url, dni, telefono,
                  to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento, created_at
           FROM admin WHERE id = $1`
 };
 
 const responderError = (res, error) => {
   if (error.code === '23505') {
-    return res.status(409).json({ message: 'El email o el usuario ya están en uso' });
+    return res.status(409).json({ message: error.constraint && error.constraint.includes('dni') ? 'Ya existe una cuenta con ese DNI' : 'El email o el usuario ya están en uso' });
   }
   console.error(error);
   res.status(500).json({ message: 'Error en el servidor' });
@@ -46,12 +46,52 @@ const actualizarPerfil = async (req, res) => {
     return res.status(403).json({ message: 'Rol no válido' });
   }
 
-  const { error, valores } = validarCuenta(req.body, false);
+  const body = { ...(req.body || {}) };
+  if (body.fecha_nacimiento === null || body.fecha_nacimiento === '') delete body.fecha_nacimiento;
+  const { error, valores } = validarCuenta(body, false);
   if (error) {
     return res.status(400).json({ message: error });
   }
+
+  // Nombre y apellido no se editan desde el perfil: se aceptan solo si coinciden con los guardados
+  // (así una versión anterior de la app que los reenvía sin cambios no falla)
+  const actual = await db.query(`SELECT nombre, apellido, dni, to_char(fecha_nacimiento, 'YYYY-MM-DD') AS fecha_nacimiento FROM ${tabla} WHERE id = $1`, [req.user.id]);
+  if (actual.rows.length === 0) {
+    return res.status(404).json({ message: 'Cuenta no encontrada' });
+  }
+  if ((valores.nombre !== undefined && valores.nombre !== actual.rows[0].nombre) ||
+      (valores.apellido !== undefined && valores.apellido !== actual.rows[0].apellido)) {
+    return res.status(400).json({ message: 'El nombre y el apellido no se pueden modificar. Si hay un error, contactá a soporte' });
+  }
+  delete valores.nombre;
+  delete valores.apellido;
+
+  // La fecha de nacimiento tampoco se cambia: solo se carga si la cuenta aún no la tenía
+  if (valores.fecha_nacimiento !== undefined) {
+    if (actual.rows[0].fecha_nacimiento && actual.rows[0].fecha_nacimiento !== valores.fecha_nacimiento) {
+      return res.status(400).json({ message: 'La fecha de nacimiento no se puede modificar' });
+    }
+    if (actual.rows[0].fecha_nacimiento) delete valores.fecha_nacimiento;
+  }
+
+  // El DNI no se cambia; solo se puede cargar una vez si la cuenta aún no lo tenía
+  if (body.dni !== undefined && body.dni !== null && body.dni !== '') {
+    const { error: errorDni, dni } = validarDni(body.dni);
+    if (errorDni) return res.status(400).json({ message: errorDni });
+    if (actual.rows[0].dni && actual.rows[0].dni !== dni) {
+      return res.status(400).json({ message: 'El DNI no se puede modificar' });
+    }
+    if (!actual.rows[0].dni) valores.dni = dni;
+  }
+  // El teléfono es de los dueños
+  if (body.telefono !== undefined && tabla === 'admin') {
+    const { error: errorTel, telefono } = validarTelefono(body.telefono);
+    if (errorTel) return res.status(400).json({ message: errorTel });
+    valores.telefono = telefono;
+  }
+
   if (Object.keys(valores).length === 0) {
-    return res.status(400).json({ message: 'No se envió ningún dato para modificar' });
+    return res.json({ message: 'Perfil actualizado', perfil: { ...(await db.query(SELECT_PERFIL[tabla], [req.user.id])).rows[0], rol: req.user.rol } });
   }
 
   try {
