@@ -45,6 +45,11 @@ function TarjetaCabana({ cabana, esDueno, onEditar, onCambiarEstado }) {
             <span className={`estado ${cabana.activa ? 'estado-confirmada' : 'estado-cancelada'}`}>
               {cabana.activa ? 'Activa' : 'Inactiva'}
             </span>
+            {cabana.estado_aprobacion !== 'aprobada' && (
+              <span className={`estado ${cabana.estado_aprobacion === 'pendiente' ? 'estado-pendiente' : 'estado-cancelada'}`}>
+                {cabana.estado_aprobacion === 'pendiente' ? 'En revisión' : 'Rechazada'}
+              </span>
+            )}
             <strong className="precio">{formatearPrecio(cabana.precio_por_noche)}<small> / noche</small></strong>
           </div>
         </div>
@@ -58,6 +63,15 @@ function TarjetaCabana({ cabana, esDueno, onEditar, onCambiarEstado }) {
           </span>
           {cabana.metodos_pago && <span><strong>Pagos:</strong> {cabana.metodos_pago}</span>}
         </div>
+
+        {cabana.estado_aprobacion === 'pendiente' && (
+          <p className="texto-suave">⏳ En revisión: se publicará en el catálogo cuando el equipo de Cabins la apruebe.</p>
+        )}
+        {cabana.estado_aprobacion === 'rechazada' && (
+          <div className="mensaje-error">
+            Rechazada: {cabana.motivo_rechazo || 'sin motivo indicado'}. Corregila desde «Editar» y se enviará de nuevo a revisión.
+          </div>
+        )}
 
         {esDueno && (
           <div className="item-acciones">

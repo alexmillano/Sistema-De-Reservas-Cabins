@@ -2,6 +2,8 @@
 const crypto = require('crypto');
 
 const BUCKET = process.env.SUPABASE_BUCKET || 'cabanas';
+// Bucket PRIVADO para documentos (DNI, escrituras…): nunca se expone una URL pública
+const BUCKET_PRIVADO = process.env.SUPABASE_BUCKET_PRIVADO || 'documentos';
 
 // Se detecta el tipo real mirando los primeros bytes del archivo (el nombre o el tipo que declara el cliente no sirven)
 const detectarTipo = (b) => {
@@ -44,4 +46,64 @@ const subirImagen = async (buffer, carpeta) => {
   return `${base}/storage/v1/object/public/${BUCKET}/${ruta}`;
 };
 
-module.exports = { subirImagen };
+const credenciales = () => {
+  const url = process.env.SUPABASE_URL;
+  const clave = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !clave) throw errorHttp(503, 'El almacenamiento de documentos no está configurado en el servidor');
+  return { base: url.replace(/\/+$/, ''), clave };
+};
+
+// Tipo real de un documento: imagen o PDF (se mira el contenido, no el nombre)
+const detectarDocumento = (b) => {
+  const img = detectarTipo(b);
+  if (img) return img;
+  if (b.length > 5 && b.subarray(0, 5).toString('ascii') === '%PDF-') return { mime: 'application/pdf', ext: 'pdf' };
+  return null;
+};
+
+// Sube un documento al bucket privado y devuelve la RUTA (no una URL)
+const subirDocumento = async (buffer, carpeta) => {
+  const { base, clave } = credenciales();
+  const tipo = detectarDocumento(buffer);
+  if (!tipo) throw errorHttp(400, 'El archivo debe ser un PDF o una imagen JPG, PNG o WEBP');
+
+  const ruta = `${carpeta}/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${tipo.ext}`;
+  const respuesta = await fetch(`${base}/storage/v1/object/${BUCKET_PRIVADO}/${ruta}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${clave}`, apikey: clave, 'Content-Type': tipo.mime, 'x-upsert': 'false' },
+    body: buffer
+  });
+  if (!respuesta.ok) {
+    const detalle = await respuesta.text().catch(() => '');
+    console.error('Supabase Storage (privado) respondió', respuesta.status, detalle.slice(0, 200));
+    throw errorHttp(502, 'No se pudo guardar el documento. Intentá de nuevo en unos minutos');
+  }
+  return ruta;
+};
+
+// URL temporal (firmada) para ver un documento privado. Vence a los 10 minutos.
+const urlFirmada = async (ruta, segundos = 600) => {
+  const { base, clave } = credenciales();
+  const respuesta = await fetch(`${base}/storage/v1/object/sign/${BUCKET_PRIVADO}/${ruta}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${clave}`, apikey: clave, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresIn: segundos })
+  });
+  if (!respuesta.ok) return null;
+  const datos = await respuesta.json().catch(() => null);
+  if (!datos || !datos.signedURL) return null;
+  const parte = datos.signedURL.startsWith('/') ? datos.signedURL : `/${datos.signedURL}`;
+  return `${base}/storage/v1${parte.replace(/^\/storage\/v1/, '')}`;
+};
+
+// Borra un documento del bucket privado (si falla se ignora: la fila de la base es la que manda)
+const borrarDocumento = async (ruta) => {
+  try {
+    const { base, clave } = credenciales();
+    await fetch(`${base}/storage/v1/object/${BUCKET_PRIVADO}/${ruta}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${clave}`, apikey: clave }
+    });
+  } catch (e) { console.error('No se pudo borrar el documento', e.message); }
+};
+
+module.exports = { subirImagen, subirDocumento, urlFirmada, borrarDocumento };

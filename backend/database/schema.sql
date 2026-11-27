@@ -77,12 +77,18 @@ CREATE TABLE cabana (
   metodos_pago        VARCHAR(255),
   admin_id            INTEGER REFERENCES admin(id),
   activa              BOOLEAN DEFAULT TRUE,
+  estado_aprobacion   VARCHAR(10) NOT NULL DEFAULT 'pendiente',   -- pendiente | aprobada | rechazada
+  motivo_rechazo      VARCHAR(500),
+  revisada_at         TIMESTAMP,
+  revisada_por        INTEGER REFERENCES admin(id) ON DELETE SET NULL,
   created_at          TIMESTAMP DEFAULT NOW(),
   updated_at          TIMESTAMP DEFAULT NOW(),
   localidad_id        INTEGER NOT NULL REFERENCES localidad(id),
   capacidad_personas  INTEGER NOT NULL DEFAULT 2 CHECK (capacidad_personas > 0)
 );
+ALTER TABLE cabana ADD CONSTRAINT cabana_estado_aprobacion_check CHECK (estado_aprobacion IN ('pendiente', 'aprobada', 'rechazada'));
 CREATE INDEX idx_cabana_admin ON cabana (admin_id);
+CREATE INDEX idx_cabana_aprobacion ON cabana (estado_aprobacion);
 CREATE INDEX idx_cabana_localidad ON cabana (localidad_id);
 
 -- Galería: hasta 10 fotos por cabaña. cabana.imagen_url es la portada (la primera).
@@ -94,6 +100,19 @@ CREATE TABLE cabana_imagen (
   created_at  TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX idx_cabana_imagen_cabana ON cabana_imagen (cabana_id, orden);
+
+-- Documentos de la propiedad (opcionales, hasta 5). Bucket PRIVADO: se guarda solo la ruta.
+CREATE TABLE cabana_documento (
+  id               SERIAL PRIMARY KEY,
+  cabana_id        INTEGER NOT NULL REFERENCES cabana(id) ON DELETE CASCADE,
+  tipo             VARCHAR(30) NOT NULL,
+  ruta             VARCHAR(300) NOT NULL,
+  nombre_original  VARCHAR(150),
+  created_at       TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT cabana_documento_tipo_check CHECK (tipo IN
+    ('titularidad', 'impuesto_inmobiliario', 'servicio', 'habilitacion', 'otro'))
+);
+CREATE INDEX idx_cabana_documento_cabana ON cabana_documento (cabana_id);
 
 -- Plan contratado por cabaña (Free = sin fila). Dura 30 días.
 CREATE TABLE plan_cabana (
@@ -228,7 +247,7 @@ CREATE TABLE notificacion (
   created_at  TIMESTAMP DEFAULT NOW(),
   reserva_id  INTEGER REFERENCES reserva(id) ON DELETE CASCADE,
   CONSTRAINT chk_notificacion_tipo CHECK (tipo IN
-    ('nueva_reserva', 'reclamo', 'cancelacion', 'opinion', 'pago_aprobado', 'checkout', 'plan'))
+    ('nueva_reserva', 'reclamo', 'cancelacion', 'opinion', 'pago_aprobado', 'checkout', 'plan', 'revision'))
 );
 -- Una sola notificación de checkout por reserva y dueño
 CREATE UNIQUE INDEX uq_notif_checkout ON notificacion (admin_id, reserva_id) WHERE tipo = 'checkout';
@@ -256,6 +275,7 @@ ALTER TABLE provincia          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE localidad          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cabana_imagen      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cabana_documento   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE usuario            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cabana             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plan_cabana        ENABLE ROW LEVEL SECURITY;

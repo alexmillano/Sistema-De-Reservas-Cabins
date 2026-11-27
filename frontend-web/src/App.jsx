@@ -23,6 +23,7 @@ import Opiniones from './pages/Opiniones';
 import Administradores from './pages/Administradores';
 import Usuarios from './pages/Usuarios';
 import Planes from './pages/Planes';
+import RevisionCabanas from './pages/RevisionCabanas';
 import { NoEncontrada } from './pages/Pendiente';
 import RecuperarClave from './pages/RecuperarClave';
 import RestablecerClave from './pages/RestablecerClave';
@@ -67,6 +68,7 @@ export default function App() {
             <Route element={<ProtectedRoute roles={['admin']} superadmin />}>
               <Route path="admin/admins" element={<Administradores />} />
               <Route path="admin/usuarios" element={<Usuarios />} />
+              <Route path="admin/revision" element={<RevisionCabanas />} />
             </Route>
 
             <Route element={<ProtectedRoute />}>

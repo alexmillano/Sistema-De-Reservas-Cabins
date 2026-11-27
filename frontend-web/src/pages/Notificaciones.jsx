@@ -9,6 +9,8 @@ const TIPOS = {
   checkout: { texto: 'Check-out', icono: '🧳', destino: '/admin/reservas', accion: 'Ver reservas' },
   reclamo: { texto: 'Reclamo', icono: '⚠️', destino: '/admin/reclamos', accion: 'Ver reclamos' },
   opinion: { texto: 'Opinión', icono: '⭐', destino: '/admin/opiniones', accion: 'Ver opiniones' },
+  revision_pendiente: { texto: 'Cabaña para revisar', icono: '🕵️', destino: '/admin/revision', accion: 'Ir a revisión' },
+  revision: { texto: 'Revisión de cabaña', icono: '📝', destino: '/admin/cabanas', accion: 'Ver mis cabañas' },
   plan: { texto: 'Plan pausado', icono: '⏸️', destino: '/admin/planes', accion: 'Ver planes' }
 };
 

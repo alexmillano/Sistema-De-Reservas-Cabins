@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api, { mensajeError } from '../api/client';
 import { formatearPrecio } from '../utils/formato';
 import GaleriaEditor from '../components/GaleriaEditor';
+import DocumentosCabana from '../components/DocumentosCabana';
 
 const MEDIOS_PAGO = ['Efectivo', 'Tarjeta', 'MercadoPago'];
 const MAX_DESCRIPCION = 1000;
@@ -22,6 +23,7 @@ export default function FormularioCabana() {
   const [errorCarga, setErrorCarga] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [docsPendientes, setDocsPendientes] = useState([]);
 
   // Provincias, y la cabaña a editar si corresponde
   useEffect(() => {
@@ -115,11 +117,27 @@ export default function FormularioCabana() {
 
     setEnviando(true);
     try {
-      if (editando) await api.put(`/cabanas/${id}`, cuerpo);
-      else await api.post('/cabanas', cuerpo);
-      navigate('/admin/cabanas', {
-        state: { aviso: editando ? 'Cabaña actualizada correctamente.' : 'Cabaña creada correctamente.' }
-      });
+      let aviso = 'Cabaña actualizada correctamente.';
+      if (editando) {
+        await api.put(`/cabanas/${id}`, cuerpo);
+      } else {
+        const { data } = await api.post('/cabanas', cuerpo);
+        aviso = 'Cabaña enviada a revisión. Se publicará cuando el equipo de Cabins la apruebe.';
+        // La documentación se sube una vez creada la cabaña; si alguno falla, se avisa y se puede reintentar al editar
+        let fallidos = 0;
+        for (const doc of docsPendientes) {
+          try {
+            const datos = new FormData();
+            datos.append('tipo', doc.tipo);
+            datos.append('archivo', doc.archivo);
+            await api.post(`/cabanas/${data.id}/documentos`, datos);
+          } catch {
+            fallidos += 1;
+          }
+        }
+        if (fallidos > 0) aviso += ` ${fallidos} documento(s) no se pudieron subir: agregalos desde «Editar».`;
+      }
+      navigate('/admin/cabanas', { state: { aviso } });
     } catch (err) {
       setError(mensajeError(err));
       setEnviando(false);
@@ -185,6 +203,8 @@ export default function FormularioCabana() {
           <label>Fotos de la cabaña (opcional, hasta 10)</label>
           <GaleriaEditor fotos={form.imagenes} onCambio={(fotos) => setForm((f) => ({ ...f, imagenes: fotos }))} />
         </div>
+
+        <DocumentosCabana cabanaId={editando ? id : null} pendientes={docsPendientes} onPendientes={setDocsPendientes} />
 
         <fieldset className="medios-pago">
           <legend>Medios de pago aceptados</legend>

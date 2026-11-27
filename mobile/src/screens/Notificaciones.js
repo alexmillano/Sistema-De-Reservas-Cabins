@@ -5,7 +5,7 @@ import api, { mensajeError } from '../api/client';
 import { Aviso, Boton } from '../components/Ui';
 import { colores } from '../theme/colores';
 
-const ICONO = { pago_aprobado: '💳', cancelacion: '❌', reclamo: '💬', opinion: '⭐', checkout: '🚪', plan: '🏷️' };
+const ICONO = { pago_aprobado: '💳', cancelacion: '❌', reclamo: '💬', opinion: '⭐', checkout: '🚪', plan: '🏷️', revision: '📝', revision_pendiente: '🕵️' };
 
 // Hora de Argentina sin depender de Intl
 const fecha = (iso) => {

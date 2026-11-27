@@ -398,8 +398,8 @@ export default function Finanzas() {
           <h1>Finanzas</h1>
           <p className="texto-suave">
             {user.es_superadmin
-              ? 'Todo el dinero del sistema: lo que entra a la plataforma y lo que se entrega a los dueños.'
-              : 'Lo que entra a tu bolsillo (en verde) y lo que se te descuenta (en rojo).'}
+              ? 'Resumen financiero de la plataforma: comisiones, cargos cobrados, y montos transferidos a los dueños.'
+              : 'Resumen de tus ingresos (en verde) y de las comisiones y cargos descontados (en rojo).'}
           </p>
         </div>
         <div className="campo campo-orden">

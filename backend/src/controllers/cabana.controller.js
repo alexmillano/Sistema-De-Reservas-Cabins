@@ -35,6 +35,22 @@ const SELECT_CABANA = `
   ${JOIN_PLAN}
 `;
 
+// Avisa a todos los superadmin activos que hay una cabaña esperando revisión
+const avisarSuperadmins = async (cabanaId, texto) => {
+  try {
+    const r = await db.query('SELECT nombre, apellido FROM admin WHERE id = (SELECT admin_id FROM cabana WHERE id = $1)', [cabanaId]);
+    const dueno = r.rows[0] ? `${r.rows[0].nombre} ${r.rows[0].apellido}` : 'Un dueño';
+    await db.query(
+      `INSERT INTO notificacion (admin_id, tipo, mensaje)
+       SELECT id, 'revision_pendiente', $1 FROM admin WHERE es_superadmin = TRUE AND baneado = FALSE`,
+      [`${dueno} ${texto}`.slice(0, 500)]
+    );
+  } catch (error) {
+    // El aviso es un extra: si falla, la cabaña igual se guardó
+    console.error('No se pudo avisar a los superadmin:', error.message);
+  }
+};
+
 // La galería es opcional: si viene, debe ser una lista de hasta 10 enlaces http(s) sin repetir
 const validarImagenes = (imagenes) => {
   if (imagenes === undefined) return null;
@@ -187,6 +203,8 @@ const getCabanasPanel = async (req, res) => {
       `SELECT c.id, c.nombre, c.descripcion,
               c.precio_por_noche::float AS precio_por_noche,
               c.capacidad_personas, c.imagen_url, c.metodos_pago, c.activa, c.created_at,
+              c.estado_aprobacion, c.motivo_rechazo,
+              (SELECT COUNT(*)::int FROM cabana_documento d WHERE d.cabana_id = c.id) AS total_documentos,
               ${IMAGENES} AS imagenes,
               l.id AS localidad_id, l.nombre AS localidad,
               p.id AS provincia_id, p.nombre AS provincia,
@@ -275,7 +293,8 @@ const createCabana = async (req, res) => {
       cliente.release();
     }
 
-    res.status(201).json({ message: 'Cabaña creada exitosamente', id: nuevoId });
+    await avisarSuperadmins(nuevoId, `envió la cabaña «${nombre}» para su revisión.`);
+    res.status(201).json({ message: 'Cabaña enviada a revisión. Se publicará cuando el equipo de Cabins la apruebe', id: nuevoId });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error en el servidor' });
@@ -312,6 +331,8 @@ const updateCabana = async (req, res) => {
     if (error) {
       return res.status(400).json({ message: error });
     }
+    const previo = await db.query('SELECT estado_aprobacion FROM cabana WHERE id = $1', [id]);
+    const eraRechazada = previo.rows[0]?.estado_aprobacion === 'rechazada';
 
     const { nombre, descripcion, localidad_id, precio_por_noche,
             capacidad_personas, imagen_url, metodos_pago, activa, imagenes } = req.body;
@@ -325,6 +346,9 @@ const updateCabana = async (req, res) => {
            precio_por_noche = $4, capacidad_personas = $5,
            imagen_url = $6, metodos_pago = $7,
            activa = COALESCE($8, activa),
+           -- Si estaba rechazada, al corregirla vuelve a revisión
+           estado_aprobacion = CASE WHEN estado_aprobacion = 'rechazada' THEN 'pendiente' ELSE estado_aprobacion END,
+           motivo_rechazo = CASE WHEN estado_aprobacion = 'rechazada' THEN NULL ELSE motivo_rechazo END,
            updated_at = NOW()
          WHERE id = $9`,
         [
@@ -349,6 +373,7 @@ const updateCabana = async (req, res) => {
       cliente.release();
     }
 
+    if (eraRechazada) await avisarSuperadmins(id, `corrigió la cabaña «${nombre}» y la envió de nuevo a revisión.`);
     res.json({ message: 'Cabaña actualizada exitosamente' });
   } catch (error) {
     console.error(error);

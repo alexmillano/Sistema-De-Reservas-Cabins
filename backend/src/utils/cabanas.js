@@ -1,6 +1,6 @@
-// Una cabaña es visible si está activa y su admin no está suspendido.
+// Una cabaña es visible si está activa, aprobada por el superadmin y su admin no está suspendido.
 // Se usa en las consultas donde la tabla cabana tiene el alias "c".
-const CABANA_VISIBLE = `(c.activa = TRUE AND NOT EXISTS (
+const CABANA_VISIBLE = `(c.activa = TRUE AND c.estado_aprobacion = 'aprobada' AND NOT EXISTS (
   SELECT 1 FROM admin a WHERE a.id = c.admin_id AND a.baneado = TRUE
 ))`;
 

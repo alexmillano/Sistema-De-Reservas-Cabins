@@ -31,6 +31,7 @@ const MENU_ADMIN = [
 ];
 
 const MENU_SUPERADMIN = { texto: 'Administración', hijos: [
+  { texto: 'Revisión de cabañas', to: '/admin/revision' },
   { texto: 'Administradores', to: '/admin/admins' },
   { texto: 'Usuarios', to: '/admin/usuarios' }
 ] };

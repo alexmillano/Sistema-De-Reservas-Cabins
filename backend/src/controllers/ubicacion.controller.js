@@ -7,7 +7,7 @@ const getProvincias = async (req, res) => {
       `SELECT p.id, p.nombre, COUNT(c.id)::int AS cabanas
        FROM provincia p
        LEFT JOIN localidad l ON l.provincia_id = p.id
-       LEFT JOIN cabana c ON c.localidad_id = l.id AND c.activa = TRUE
+       LEFT JOIN cabana c ON c.localidad_id = l.id AND c.activa = TRUE AND c.estado_aprobacion = 'aprobada'
        GROUP BY p.id, p.nombre
        ORDER BY p.nombre`
     );
